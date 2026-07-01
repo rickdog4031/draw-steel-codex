@@ -882,13 +882,23 @@ function CBOptionWrapper:GetGuid()
 end
 
 --- The implementation status of this option, matching gui.ImplementationStatus
---- (0 = Narrative, 1 = Unimplemented, 2 = Bronze, 3 = Silver, 4 = Gold). Mirrors
---- the class/compendium editor, which treats an unset status as Unimplemented
---- (see DSClassEditor's feature:try_get("implementation", 1)), so options an
---- author never marked surface as Unimplemented rather than silently blank.
---- @return number
+--- (0 = Narrative, 1 = Unimplemented, 2 = Bronze, 3 = Silver, 4 = Gold), or nil
+--- when the option does not track an implementation status at all.
+---
+--- Only feature-style options -- CharacterFeature game objects such as class
+--- feature and animal-trait picks -- carry an implementation status, and for
+--- those an unset status defaults to Unimplemented to mirror the class/compendium
+--- editor (feature:try_get("implementation", 1)). Other choice entries such as
+--- subclasses, skills, languages and tools are plain option tables with no
+--- implementation concept (and no try_get); they return nil so the builder hides
+--- the badge instead of mislabeling every option "Unimplemented".
+--- @return number|nil
 function CBOptionWrapper:GetImplementation()
-    return _safeGet(self.option, "implementation", 1)
+    local option = self.option
+    if option == nil or option.try_get == nil then
+        return nil
+    end
+    return option:try_get("implementation", 1)
 end
 
 --- @return string
