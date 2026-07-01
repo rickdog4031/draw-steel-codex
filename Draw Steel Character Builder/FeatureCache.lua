@@ -885,17 +885,18 @@ end
 --- (0 = Narrative, 1 = Unimplemented, 2 = Bronze, 3 = Silver, 4 = Gold), or nil
 --- when the option does not track an implementation status at all.
 ---
---- Only feature-style options -- CharacterFeature game objects such as class
---- feature and animal-trait picks -- carry an implementation status, and for
---- those an unset status defaults to Unimplemented to mirror the class/compendium
---- editor (feature:try_get("implementation", 1)). Other choice entries such as
---- subclasses, skills, languages and tools are plain option tables with no
---- implementation concept (and no try_get); they return nil so the builder hides
---- the badge instead of mislabeling every option "Unimplemented".
+--- Implementation status is a property of CharacterFeature (class feature and
+--- animal-trait picks etc.), so the badge is limited to options derived from it;
+--- for those an unset status defaults to Unimplemented to mirror the class/
+--- compendium editor (feature:try_get("implementation", 1)). Every other kind of
+--- choice entry returns nil so the builder hides the badge instead of mislabeling
+--- it "Unimplemented" -- this covers both plain option tables (subclasses, skills,
+--- languages, tools) and non-feature game objects such as Deity and DeityDomain
+--- picks, which have try_get but no implementation concept.
 --- @return number|nil
 function CBOptionWrapper:GetImplementation()
     local option = self.option
-    if option == nil or option.try_get == nil then
+    if option == nil or option.IsDerivedFrom == nil or option.IsDerivedFrom("CharacterFeature") ~= true then
         return nil
     end
     return option:try_get("implementation", 1)
