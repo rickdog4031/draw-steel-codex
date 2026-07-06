@@ -188,54 +188,70 @@ CharacterModifier.TypeInfo.movementrestriction = {
         modifier.targetFormula = ""
     end,
 
-    -- Returns false if stepping onto loc would bring the creature closer to the
-    -- target than its starting position.
+    -- Returns false if stepping onto loc would bring the creature closer to any
+    -- restricted target than its starting position. The target formula may resolve
+    -- to a single creature/charid, or to a CreatureSet (e.g. "all minotaurs"), in
+    -- which case the move is forbidden if it approaches ANY member of the set.
     MoveToLocPermitted = function(modifier, modContext, creature, startLoc, loc)
         local formula = modifier:try_get("targetFormula", "")
         if formula == "" then return true end
 
-        -- Cache the resolved charid per frame so EvalGoblinScriptToObject only runs
+        -- Cache the resolved charids per frame so EvalGoblinScriptToObject only runs
         -- once across all tile checks in a single movement overlay calculation.
         local currentFrame = dmhub.FrameCount()
-        local targetCharid = modifier:try_get("_tmp_targetCharid")
+        local targetCharids = modifier:try_get("_tmp_targetCharids")
         if modifier:try_get("_tmp_targetFrame") ~= currentFrame then
-            targetCharid = nil
+            targetCharids = {}
             local result = dmhub.EvalGoblinScriptToObject(formula, creature:LookupSymbol(), "Movement restriction target")
             if type(result) == "string" and result ~= "" then
-                targetCharid = result
+                targetCharids[#targetCharids+1] = result
             elseif type(result) == "number" then
-                targetCharid = tostring(math.floor(result))
+                targetCharids[#targetCharids+1] = tostring(math.floor(result))
             elseif result ~= nil and type(result) == "table" then
-                local tid = dmhub.LookupTokenId(result)
-                if tid ~= nil and tid ~= "" then
-                    targetCharid = tid
+                if result.typeName == "CreatureSet" then
+                    for _, tid in ipairs(result.creatures or {}) do
+                        if type(tid) == "string" and tid ~= "" then
+                            targetCharids[#targetCharids+1] = tid
+                        end
+                    end
+                else
+                    local tid = dmhub.LookupTokenId(result)
+                    if tid ~= nil and tid ~= "" then
+                        targetCharids[#targetCharids+1] = tid
+                    end
                 end
             end
             modifier._tmp_targetFrame = currentFrame
-            modifier._tmp_targetCharid = targetCharid
+            modifier._tmp_targetCharids = targetCharids
         end
 
-        if targetCharid == nil or targetCharid == "" then return true end
+        if targetCharids == nil or #targetCharids == 0 then return true end
 
-        local targetToken = dmhub.GetTokenById(targetCharid)
-        if targetToken == nil or (not targetToken.valid) then return true end
+        for _, targetCharid in ipairs(targetCharids) do
+            local targetToken = dmhub.GetTokenById(targetCharid)
+            if targetToken ~= nil and targetToken.valid then
+                local targetLocs = targetToken.locsOccupying
+                if targetLocs ~= nil and #targetLocs > 0 then
+                    local startDist = math.huge
+                    for _, tl in ipairs(targetLocs) do
+                        local d = startLoc:DistanceInTiles(tl)
+                        if d < startDist then startDist = d end
+                    end
 
-        local targetLocs = targetToken.locsOccupying
-        if targetLocs == nil or #targetLocs == 0 then return true end
+                    local locDist = math.huge
+                    for _, tl in ipairs(targetLocs) do
+                        local d = loc:DistanceInTiles(tl)
+                        if d < locDist then locDist = d end
+                    end
 
-        local startDist = math.huge
-        for _, tl in ipairs(targetLocs) do
-            local d = startLoc:DistanceInTiles(tl)
-            if d < startDist then startDist = d end
+                    if locDist < startDist then
+                        return false
+                    end
+                end
+            end
         end
 
-        local locDist = math.huge
-        for _, tl in ipairs(targetLocs) do
-            local d = loc:DistanceInTiles(tl)
-            if d < locDist then locDist = d end
-        end
-
-        return locDist >= startDist
+        return true
     end,
 
     createEditor = function(modifier, element)
@@ -270,12 +286,16 @@ CharacterModifier.TypeInfo.movementrestriction = {
                         Refresh()
                     end,
                     documentation = {
-                        help = "A GoblinScript expression that evaluates to the creature the restricted creature cannot approach. Can be a raw token ID number, or a GoblinScript expression such as ConditionCaster(\"Frightened\").",
+                        help = "A GoblinScript expression that evaluates to the creature (or set of creatures) the restricted creature cannot approach. Can be a raw token ID number, a single creature such as ConditionCaster(\"Frightened\"), or a creature set such as CasterSet(\"Frightened (Minotaurs)\"). When a set is given, the creature cannot approach ANY member of it.",
                         output = "creature",
                         examples = {
                             {
                                 script = "ConditionCaster(\"Frightened\")",
                                 text = "Cannot approach the creature that inflicted Frightened on this creature.",
+                            },
+                            {
+                                script = "CasterSet(\"Frightened (Minotaurs)\")",
+                                text = "Cannot approach any creature in the effect's dynamic source set (e.g. every minotaur).",
                             },
                         },
                     },

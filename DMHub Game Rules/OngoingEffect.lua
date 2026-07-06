@@ -24,6 +24,14 @@ CharacterOngoingEffect.countsTowardInstanceLimit = true
 CharacterOngoingEffect.casterTracking = "none"
 CharacterOngoingEffect.buffType = "debuff"
 
+--- A GoblinScript boolean filter that dynamically defines the "source" set of this effect.
+--- When non-empty, the source of the effect is not a recorded caster but every creature on the
+--- map for which this filter evaluates true (e.g. `Keywords has "Minotaur"`). This drives the
+--- hover red lines (one per matching creature) and the `CasterSet(name)` GoblinScript lookup, so
+--- effects like "frightened of all minotaurs" stay correct as creatures enter/leave or die.
+--- Empty string = no dynamic source (legacy behavior, uses recorded casters).
+CharacterOngoingEffect.sourceFilter = ""
+
 CharacterOngoingEffect.BuffTypeOptions = {
 	{
 		id = 'debuff',
@@ -137,6 +145,13 @@ function CharacterOngoingEffect.Create(options)
 end
 
 function CharacterOngoingEffect:FillEditingFields(result)
+end
+
+--- True if this effect defines its source dynamically via a GoblinScript filter
+--- (see CharacterOngoingEffect.sourceFilter) rather than recorded casters.
+--- @return boolean
+function CharacterOngoingEffect:HasDynamicSource()
+	return trim(self:try_get("sourceFilter", "")) ~= ""
 end
 
 function CharacterOngoingEffect:GetCondition()

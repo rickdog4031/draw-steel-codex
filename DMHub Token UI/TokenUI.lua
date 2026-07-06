@@ -355,6 +355,14 @@ local CalculateStatusIcons = function(token)
                         end
 					end
 
+                    --filter-defined source effects (e.g. frightened of all minotaurs) point a red
+                    --line at every matching creature on the map, recomputed live.
+                    local casterSet = cond:try_get("casterSet")
+                    if ongoingEffectInfo:HasDynamicSource() then
+                        casterid = nil
+                        casterSet = token.properties:ComputeOngoingEffectSourceSet(ongoingEffectInfo)
+                    end
+
 					result[#result+1] = {
 						id = cond.ongoingEffectid,
 						icon = ongoingEffectInfo:GetDisplayIcon(),
@@ -363,7 +371,7 @@ local CalculateStatusIcons = function(token)
 						hoverText = hoverText,
 						statusIcon = true,
 						casterid = casterid,
-                        casterSet = cond:try_get("casterSet"),
+                        casterSet = casterSet,
 					}
 
 					effectsMap[cond.ongoingEffectid] = result[#result]

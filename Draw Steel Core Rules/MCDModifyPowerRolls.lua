@@ -513,6 +513,40 @@ CharacterModifier.TypeInfo.power = {
             return roll
         end
 
+        if self.modtype == "floortotal17" then
+            --Guarantees a total of at least 17 (e.g. "treats their power roll as
+            --a 17") while leaving the real 2d10 in place, so a natural 19/20
+            --still crits and edges/banes from other stacked modifiers still
+            --shift the tier normally. Floors each die individually (minroll)
+            --rather than replacing the roll outright, since replacing it would
+            --remove the dice entirely and kill crit detection.
+            local m = regex.MatchGroups(roll, "^(?<dice>2d10)(?:\\s*(?<sign>[+-])\\s*(?<num>\\d+))?(?<suffix>.*)$")
+            if m ~= nil and m.dice ~= nil and m.dice ~= "" then
+                local bonus = 0
+                if m.num ~= nil and m.num ~= "" then
+                    bonus = tonumber(m.num) or 0
+                    if m.sign == "-" then
+                        bonus = -bonus
+                    end
+                end
+
+                local minroll = math.ceil((17 - bonus) / 2)
+                if minroll < 1 then
+                    minroll = 1
+                elseif minroll > 10 then
+                    minroll = 10
+                end
+
+                local bonusText = ""
+                if m.num ~= nil and m.num ~= "" then
+                    bonusText = " " .. m.sign .. " " .. m.num
+                end
+
+                roll = "2d10 minroll " .. minroll .. bonusText .. (m.suffix or "")
+            end
+            return roll
+        end
+
         local modType = ActivatedAbilityPowerRollBehavior.s_modificationTypesById[self.modtype]
         if modType == nil then
             return roll

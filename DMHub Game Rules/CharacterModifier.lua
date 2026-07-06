@@ -3802,6 +3802,22 @@ function CharacterModifier:TriggerEvent(creature, eventName, info, modContext, d
         elseif localFilter == "skipLocal" and self.triggeredAbility:IsLocalOnly() then
             return false
         end
+
+        -- Subject gate: must mirror HasTriggeredEvent. The DispatchEvent path
+        -- pre-filters candidates through HasTriggeredEvent, but the TriggerEvent
+        -- path (e.g. TriggerEventOnOthers from the minion-death handler and the
+        -- "kill" dispatch) calls us directly with no pre-filter. Without this
+        -- check a self-only trigger like a monster's "when reduced to 0 Stamina"
+        -- death trait fires on every OTHER creature's death too.
+        local subject = self.triggeredAbility:try_get("subject", "self")
+        local targetsOther = info ~= nil and info.subject ~= nil
+        if subject == "self" and targetsOther then
+            return false
+        end
+        if subject ~= "self" and subject ~= "any" and subject ~= "selfandallies" and subject ~= "selfandheroes" and not targetsOther then
+            return false
+        end
+
         if self.triggeredAbility:try_get("whenActive", "always") == "combat" and (dmhub.initiativeQueue == nil or dmhub.initiativeQueue.hidden) then
             return false
         end

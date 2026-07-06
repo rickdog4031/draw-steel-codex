@@ -1956,6 +1956,36 @@ creature.RegisterSymbol {
     },
 }
 
+--Elemental affinity (animal "Elemental" trait). A creature that takes the trait
+--picks one damage type (acid / cold / corruption / fire / lightning / poison) in
+--the character builder. That choice records the type on the "Elemental Affinity"
+--custom attribute (set by an attribute modifier on the chosen option) and grants
+--the matching Damage Immunity 3 (a resistance modifier on the same option).
+--Strikes authored with the placeholder damage type "elemental" resolve to this
+--value at roll time (see AbilityDamage / MCDMAbilityBehavior), mirroring the way
+--the Acolyte "patron" placeholder resolves to PatronDamageType.
+--Returns a lowercase damage-type string, or "" if no affinity is set.
+function creature:ElementalAffinity()
+    local attrInfo = CustomAttribute.attributeInfoByLookupSymbol
+        and CustomAttribute.attributeInfoByLookupSymbol["elementalaffinity"]
+    if attrInfo == nil or type(attrInfo.CalculateBaseValue) ~= "function" then
+        return ""
+    end
+
+    local value = self:GetCustomAttribute(attrInfo)
+    if type(value) == "string" then
+        return string.lower(value)
+    end
+    if type(value) == "table" then
+        --StringSet shape (attribute set via an "add" operation): { strings = { "fire" } }
+        local strings = rawget(value, "strings")
+        if type(strings) == "table" and strings[1] ~= nil then
+            return string.lower(tostring(strings[1]))
+        end
+    end
+    return ""
+end
+
 
 local function GetEnemyCreaturesAtLoc(token, allowedTokenIds, loc, result)
     local tokensAtLoc = dmhub.GetTokensAtLoc(loc)

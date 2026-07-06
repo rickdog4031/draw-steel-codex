@@ -496,6 +496,34 @@ function CharacterOngoingEffect.CreateEditor(condid, editorOptions)
                 }
             }
 
+            children[#children+1] = gui.Panel{
+                classes = {'formStackedRow'},
+                gui.Label{
+                    classes = {'formStacked'},
+                    text = "Dynamic Source Filter:",
+                },
+                gui.GoblinScriptInput{
+                    classes = {'formStacked'},
+                    value = ongoingEffect:try_get("sourceFilter", ""),
+                    change = function(element)
+                        ongoingEffect.sourceFilter = trim(element.value)
+                        UploadOngoingEffect()
+                    end,
+                    documentation = {
+                        help = "Optional. A GoblinScript filter that dynamically defines the source of this effect: every creature on the map for which this is true becomes a source. Hovering the effect's status icon draws a red line to each one, and CasterSet(\"<effect name>\") returns the live set. Leave blank to use recorded casters instead.",
+                        output = "true or false",
+                        examples = {
+                            {
+                                script = "Keywords has \"Minotaur\"",
+                                text = "Every creature with the Minotaur keyword is a source of this effect (e.g. frightened of all minotaurs).",
+                            },
+                        },
+                        subject = creature.helpSymbols,
+                        subjectDescription = "Each candidate creature on the map",
+                    },
+                },
+            }
+
             children[#children+1] = gui.Check{
                 classes = {cond(ongoingEffect.casterTracking == "bond", nil, "collapseAnim")},
                 text = "Share Recoveries",

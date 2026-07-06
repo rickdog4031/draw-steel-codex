@@ -2677,6 +2677,146 @@ function GameHud.CreateEmbeddedRollDialog()
 
                 local children = {}
 
+                -- Integrate surge-granting "pick a damage type" features (e.g.
+                -- the Fury's Primordial Strike) into a single dropdown on the
+                -- activation button instead of one checkbox per damage type.
+                -- The activation modifier (grants a surge: has a "surges" value
+                -- and no surgeDamageType) and its damage-type members (carry a
+                -- surgeDamageType, no surges) share a sourceguid. Selecting a
+                -- type activates the base modifier and sets that type; "No
+                -- elemental type" turns the whole feature off. Everything is
+                -- driven through mod.override, so GetEnabledModifiers and the
+                -- surge-damage logic see the result unchanged.
+                local surgeGroupByBase = {}  -- base mod -> { type members }
+                local surgeHandled = {}      -- mod -> true (skip normal render)
+                do
+                    local membersBySource = {}
+                    local baseBySource = {}
+                    for _, mod in ipairs(options.modifiers) do
+                        if mod.modifier and (not mod.isAfterRoll) then
+                            local src = mod.modifier:try_get("sourceguid")
+                            if src ~= nil then
+                                if mod.modifier:try_get("surgeDamageType") ~= nil then
+                                    local list = membersBySource[src]
+                                    if list == nil then list = {}; membersBySource[src] = list end
+                                    list[#list + 1] = mod
+                                elseif mod.modifier:try_get("surges", "") ~= "" then
+                                    baseBySource[src] = baseBySource[src] or mod
+                                end
+                            end
+                        end
+                    end
+                    for src, members in pairs(membersBySource) do
+                        local base = baseBySource[src]
+                        if base ~= nil and #members >= 1 then
+                            surgeGroupByBase[base] = members
+                            surgeHandled[base] = true
+                            for _, m in ipairs(members) do surgeHandled[m] = true end
+                        end
+                    end
+                end
+
+                local SurgeMemberId = function(mod)
+                    return mod.modifier:try_get("guid", mod.modifier.surgeDamageType)
+                end
+
+                local BuildSurgeFeatureDropdown = function(base, members)
+                    base.context = base.context or {}
+
+                    -- Off-state label mirrors the checkbox text, e.g.
+                    -- "Primordial Strike (1/0 Ferocity)".
+                    local offLabel = base.modifier.name
+                    local availability = base.modifier:DescribeResourceAvailability(creature,
+                        base.context.charges or 1, options.expectedCostOfCurrentCast)
+                    if availability then
+                        offLabel = string.format("%s (%s)", offLabel, availability)
+                    end
+
+                    local chosenId, chosenText = "none", nil
+                    for _, mod in ipairs(members) do
+                        local ischecked = false
+                        if mod.override ~= nil then
+                            ischecked = mod.override
+                        elseif mod.hint ~= nil then
+                            ischecked = mod.hint.result
+                        end
+                        if ischecked then
+                            chosenId = SurgeMemberId(mod)
+                            chosenText = string.gsub(mod.modifier.surgeDamageType, "^%l", string.upper)
+                        end
+                    end
+
+                    local dropdownOptions = { { id = "none", text = "No elemental type" } }
+                    for _, mod in ipairs(members) do
+                        dropdownOptions[#dropdownOptions + 1] = {
+                            id = SurgeMemberId(mod),
+                            text = string.gsub(mod.modifier.surgeDamageType, "^%l", string.upper),
+                        }
+                    end
+
+                    local displayText = offLabel
+                    if chosenText ~= nil then
+                        displayText = string.format("%s - %s", base.modifier.name, chosenText)
+                    end
+
+                    local tooltip = base.modifier:GetSummaryText()
+                    if creature ~= nil then
+                        tooltip = StringInterpolateGoblinScript(tooltip, creature)
+                    end
+
+                    return gui.Dropdown {
+                        width = 280,
+                        height = 26,
+                        valign = "center",
+                        fontSize = 16,
+                        hmargin = 2,
+                        textOverride = displayText,
+                        idChosen = chosenId,
+                        options = dropdownOptions,
+                        change = function(element)
+                            local id = element.idChosen
+                            base.override = (id ~= "none")
+                            for _, mod in ipairs(members) do
+                                mod.override = (SurgeMemberId(mod) == id)
+                            end
+
+                            -- Reuse any existing surge-spend choice so toggling
+                            -- the feature does not clobber a manual allocation.
+                            local options = m_lastCalculationOptions or {}
+
+                            resultPanel:FireEventTree('prepare', m_options)
+                            -- First pass applies the activation modifier's surge
+                            -- to rollProperties so we can read how many it grants.
+                            CalculateRollText(options)
+
+                            if id ~= "none" then
+                                -- The user picked a damage type, so they intend to
+                                -- spend the surge this feature grants. Auto-activate
+                                -- it (mirrors clicking the surge icon) so they don't
+                                -- have to click it separately.
+                                local granted = (rollProperties ~= nil) and rollProperties:try_get("surges", 0) or 0
+                                if granted > 0 then
+                                    options = m_lastCalculationOptions or options
+                                    options.surges = math.max(options.surges or 0, granted)
+                                    if m_multitargets ~= nil and GetCurrentMultiTarget() <= #m_multitargets then
+                                        m_multitargets[GetCurrentMultiTarget()].surges = options.surges
+                                    end
+                                end
+                            end
+
+                            -- Second pass clears the type members' "requires a
+                            -- surge" gate and applies the auto-spent surge so the
+                            -- chosen damage type takes effect in this same action.
+                            CalculateRollText(options)
+                            RecalculateMultiTargets()
+                        end,
+                        linger = gui.Tooltip {
+                            text = tooltip,
+                            maxWidth = 600,
+                        },
+                    }
+                end
+
                 for modifierIndex, mod in ipairs(options.modifiers) do
                     if mod.isAfterRoll then
                         goto continue
@@ -2686,7 +2826,16 @@ function GameHud.CreateEmbeddedRollDialog()
                         if mod.failsRequirement then
                             goto continue
                         end
-                        
+
+                        -- Render the integrated surge-feature dropdown at the
+                        -- activation modifier; skip its type members entirely.
+                        if surgeHandled[mod] then
+                            if surgeGroupByBase[mod] ~= nil then
+                                children[#children + 1] = BuildSurgeFeatureDropdown(mod, surgeGroupByBase[mod])
+                            end
+                            goto continue
+                        end
+
                         mod.context = mod.context or {}
                         local ischecked = false
                         local force = mod.modifier:try_get("force", false)

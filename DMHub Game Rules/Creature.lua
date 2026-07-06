@@ -7689,6 +7689,45 @@ local countnearbycreatures = function(c, criteria)
 end
 
 
+--- Computes the dynamic "source" set of an ongoing effect that uses a GoblinScript source filter
+--- (CharacterOngoingEffect.sourceFilter). Every deployed token (other than self) for which the
+--- filter evaluates true is included. Returns a {tokenid = true} map. Result is cached per frame
+--- per effect id, since this is consulted repeatedly within a single hover / movement-overlay /
+--- power-roll calculation. Returns an empty table when the effect has no dynamic source.
+--- @param ongoingEffectInfo CharacterOngoingEffect
+--- @return table<string, boolean>
+function creature:ComputeOngoingEffectSourceSet(ongoingEffectInfo)
+    if ongoingEffectInfo == nil or (not ongoingEffectInfo:HasDynamicSource()) then
+        return {}
+    end
+
+    local cache = self:get_or_add("_tmp_ongoingEffectSourceSet", {})
+    local frame = dmhub.FrameCount()
+    if cache.frame ~= frame then
+        cache.frame = frame
+        cache.byEffect = {}
+    end
+
+    local cached = cache.byEffect[ongoingEffectInfo.id]
+    if cached ~= nil then
+        return cached
+    end
+
+    local selfTokenId = dmhub.LookupTokenId(self)
+    local filter = ongoingEffectInfo.sourceFilter
+    local result = {}
+    for _,tok in ipairs(dmhub.allTokens) do
+        if tok ~= nil and tok.valid and tok.properties ~= nil and tok.charid ~= selfTokenId then
+            if GoblinScriptTrue(ExecuteGoblinScript(filter, GenerateSymbols(tok.properties), 0, "Ongoing effect source filter")) then
+                result[tok.charid] = true
+            end
+        end
+    end
+
+    cache.byEffect[ongoingEffectInfo.id] = result
+    return result
+end
+
 --The lookup symbols mapping a creature to goblinscript.
 --also see CustomAttributes which modifies this table on table refresh.
 creature.lookupSymbols = {
@@ -8204,12 +8243,25 @@ creature.lookupSymbols = {
                 return result
             end
 
+            local effectInfo = effectsTable[effectid]
+            local dynamicSource = effectInfo ~= nil and effectInfo:HasDynamicSource()
+
             for _,effect in ipairs(ongoingEffects) do
-                if effect.ongoingEffectid == effectid and effect:has_key("casterSet") then
-                    for key,_ in pairs(effect.casterSet) do
-                        local caster = dmhub.GetTokenById(key)
-                        if caster ~= nil then
-                            result:Add(caster.properties)
+                if effect.ongoingEffectid == effectid then
+                    if dynamicSource then
+                        --filter-defined source: every matching creature on the map, computed live.
+                        for tokenid,_ in pairs(c:ComputeOngoingEffectSourceSet(effectInfo)) do
+                            local caster = dmhub.GetTokenById(tokenid)
+                            if caster ~= nil then
+                                result:Add(caster.properties)
+                            end
+                        end
+                    elseif effect:has_key("casterSet") then
+                        for key,_ in pairs(effect.casterSet) do
+                            local caster = dmhub.GetTokenById(key)
+                            if caster ~= nil then
+                                result:Add(caster.properties)
+                            end
                         end
                     end
                 end

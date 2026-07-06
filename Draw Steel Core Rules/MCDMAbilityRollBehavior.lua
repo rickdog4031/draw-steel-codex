@@ -1686,6 +1686,26 @@ function ActivatedAbilityPowerRollBehavior:Cast(ability, casterToken, targets, o
                     displayCommand = string.gsub(displayCommand, "[Pp][Aa][Tt][Rr][Oo][Nn] [Dd][Aa][Mm][Aa][Gg][Ee]", replacement)
                 end
 
+                --Elemental affinity (animal "Elemental" trait): the placeholder
+                --"elemental damage" in tier text shows the resolved affinity type
+                --in the chat log (e.g. "fire damage"). The raw command still flows
+                --to ExecuteCommand so ExecuteDamage resolves+types the event.
+                if type(displayCommand) == "string" and string.find(string.lower(displayCommand), "elemental damage", 1, true) ~= nil then
+                    local resolved = nil
+                    if casterTokenForCommand ~= nil and casterTokenForCommand.valid
+                        and casterTokenForCommand.properties ~= nil
+                        and casterTokenForCommand.properties.ElementalAffinity ~= nil then
+                        resolved = casterTokenForCommand.properties:ElementalAffinity()
+                    end
+                    local replacement
+                    if type(resolved) == "string" and resolved ~= "" then
+                        replacement = string.lower(resolved) .. " damage"
+                    else
+                        replacement = "damage"
+                    end
+                    displayCommand = string.gsub(displayCommand, "[Ee][Ll][Ee][Mm][Ee][Nn][Tt][Aa][Ll] [Dd][Aa][Mm][Aa][Gg][Ee]", replacement)
+                end
+
                 ability.RecordTokenMessage(targetToken, options, string.format("Tier %d (%s)", tier, displayCommand))
 
                 self:ExecuteCommand(ability, casterTokenForCommand, targetToken, options, command)
@@ -1754,6 +1774,7 @@ ActivatedAbilityPowerRollBehavior.s_modificationTypes = {
 {text = "Ignore Banes", id = "ignore_banes", mod = "", value = 2, ignore_banes = true, lateness = 100},
 {text = "Tier 3", id = "tier3", mod = "autosuccess", value = 0},
 {text = "Tier 1", id = "tier1", mod = "autofailure", value = 0},
+{text = "Treat Roll as 17 (keep crit chance)", id = "floortotal17", mod = "", value = 0, hideText = true},
 {text = "Not Tier 3", id = "nottierthree", mod = "nottierthree", value = 0},
 {text = "Not Tier 1", id = "nottierone", mod = "nottierone", value = 0},
 {text = "Tier Up", id = "tierup", mod = "tierup", value = 0},

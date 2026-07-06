@@ -262,6 +262,29 @@ function ActivatedAbilityDamageBehavior:Cast(ability, casterToken, targets, opti
 							end
 						end
 
+						--Elemental affinity handling (animal "Elemental" trait). The
+						--placeholder damage type "elemental" resolves to the caster's
+						--chosen elemental affinity. Falls back to "untyped" if unset.
+						if string.lower(tostring(catName)) == "elemental" then
+							local resolved = nil
+							if casterToken.properties.ElementalAffinity ~= nil then
+								resolved = casterToken.properties:ElementalAffinity()
+							end
+							if type(resolved) == "string" and resolved ~= "" then
+								effectiveCatName = resolved
+							else
+								effectiveCatName = "untyped"
+								local cast = options.symbols and options.symbols.cast
+								if cast == nil or not cast:try_get("_tmp_elementalAffinityWarned", false) then
+									if cast ~= nil then cast._tmp_elementalAffinityWarned = true end
+									print(string.format(
+										"ELEMENTAL AFFINITY:: caster has no elemental affinity set; emitting untyped for AbilityDamage on %s.",
+										ability.name
+									))
+								end
+							end
+						end
+
 						for j=1,target.count do
 
 							local saveText = ''

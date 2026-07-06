@@ -198,6 +198,30 @@ local function ExecuteDamage(behavior, ability, casterToken, targetToken, option
         end
     end
 
+    --Elemental affinity handling (animal "Elemental" trait). The placeholder
+    --token "elemental" in tier/rule text resolves to the caster's chosen
+    --elemental affinity damage type. Falls back to untyped if none is set.
+    if damageType == "elemental" then
+        local resolved = nil
+        if casterToken ~= nil and casterToken.valid and casterToken.properties ~= nil
+            and casterToken.properties.ElementalAffinity ~= nil then
+            resolved = casterToken.properties:ElementalAffinity()
+        end
+        if type(resolved) == "string" and resolved ~= "" then
+            damageType = string.lower(resolved)
+        else
+            damageType = "untyped"
+            local cast = options ~= nil and options.symbols ~= nil and options.symbols.cast
+            if cast == nil or not cast:try_get("_tmp_elementalAffinityWarned", false) then
+                if cast ~= nil then cast._tmp_elementalAffinityWarned = true end
+                print(string.format(
+                    "ELEMENTAL AFFINITY:: caster '%s' has no elemental affinity set; emitting untyped damage for tier text 'elemental damage'.",
+                    casterToken ~= nil and creature.GetTokenDescription(casterToken) or "?"
+                ))
+            end
+        end
+    end
+
     -- Count how many times (half) appears in the modifiers
     local halfCount = 0
     if match.mods then
