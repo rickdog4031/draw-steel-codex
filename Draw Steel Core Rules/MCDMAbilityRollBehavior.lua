@@ -1706,7 +1706,15 @@ function ActivatedAbilityPowerRollBehavior:Cast(ability, casterToken, targets, o
                     displayCommand = string.gsub(displayCommand, "[Ee][Ll][Ee][Mm][Ee][Nn][Tt][Aa][Ll] [Dd][Aa][Mm][Aa][Gg][Ee]", replacement)
                 end
 
-                ability.RecordTokenMessage(targetToken, options, string.format("Tier %d (%s)", tier, displayCommand))
+                local floorNote = ""
+                for _, usedMod in ipairs(modifiersUsed) do
+                    if usedMod:try_get("modtype") == "floortotal17" then
+                        floorNote = " [roll treated as 17]"
+                        break
+                    end
+                end
+
+                ability.RecordTokenMessage(targetToken, options, string.format("Tier %d (%s)%s", tier, displayCommand, floorNote))
 
                 self:ExecuteCommand(ability, casterTokenForCommand, targetToken, options, command)
 
@@ -1774,7 +1782,7 @@ ActivatedAbilityPowerRollBehavior.s_modificationTypes = {
 {text = "Ignore Banes", id = "ignore_banes", mod = "", value = 2, ignore_banes = true, lateness = 100},
 {text = "Tier 3", id = "tier3", mod = "autosuccess", value = 0},
 {text = "Tier 1", id = "tier1", mod = "autofailure", value = 0},
-{text = "Treat Roll as 17 (keep crit chance)", id = "floortotal17", mod = "", value = 0, hideText = true},
+{text = "Treats Roll as 17", id = "floortotal17", mod = "", value = 0},
 {text = "Not Tier 3", id = "nottierthree", mod = "nottierthree", value = 0},
 {text = "Not Tier 1", id = "nottierone", mod = "nottierone", value = 0},
 {text = "Tier Up", id = "tierup", mod = "tierup", value = 0},
