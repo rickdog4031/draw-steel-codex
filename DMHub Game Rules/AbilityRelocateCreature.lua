@@ -517,8 +517,14 @@ function ActivatedAbilityRelocateCreatureBehavior:Cast(ability, casterToken, tar
 				options.symbols.cast.spacesMoved = options.symbols.cast.spacesMoved + path.numSteps
 			end
 
+			--noCollisionDamage: set on forced-movement clones built from a
+			--"without damage" rule (e.g. Engulf dragging a creature into the
+			--Shambling Mound's sack). The movement itself plays normally but no
+			--collide events fire for the moved creature, bystanders, or objects.
+			local noCollisionDamage = ability:try_get("noCollisionDamage", false)
+
 			--when moving through creatures, trigger collision on each creature in the path.
-			if throughCreatures and path ~= nil and path.steps ~= nil then
+			if throughCreatures and path ~= nil and path.steps ~= nil and (not noCollisionDamage) then
 				local forcedMovementType = ability:try_get("forcedMovement", "slide")
 				local hitCreatures = {}
 				for _,step in ipairs(path.steps) do
@@ -567,7 +573,7 @@ function ActivatedAbilityRelocateCreatureBehavior:Cast(ability, casterToken, tar
 			end
 		end
 
-		if collisionInfo ~= nil then
+		if collisionInfo ~= nil and (not noCollisionDamage) then
                 local forcedMovementType = ability:try_get("forcedMovement", "slide")
                 local withobject = #(collisionInfo.collideWith or {}) == 0
 
@@ -645,7 +651,7 @@ function ActivatedAbilityRelocateCreatureBehavior:Cast(ability, casterToken, tar
 			end
 
 			--handle collisions from rebound bounces.
-			if path ~= nil and path.bounceCollisions ~= nil then
+			if path ~= nil and path.bounceCollisions ~= nil and (not noCollisionDamage) then
 				local forcedMovementType = ability:try_get("forcedMovement", "slide")
 				for _,collision in ipairs(path.bounceCollisions) do
 					local collideWith = collision.collideWith or {}

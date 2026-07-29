@@ -92,6 +92,39 @@ function ActivatedAbilityDrawSteelCommandBehavior:Cast(ability, casterToken, tar
 
         for _,target in ipairs(targets) do
             if target.token ~= nil then
+                --Optional targeting aid (highlightNearestEnemies = N squares): as each
+                --target resolves, pulse-highlight the caster's living enemies that are
+                --nearest to that target, considering only enemies within N squares of it.
+                --All enemies tied for nearest pulse together; farther enemies do not.
+                --Used by abilities that direct movement "toward the nearest enemy"
+                --(e.g. Ghost's Paranormal Activity) so the director can see the
+                --intended destination before placing the movement.
+                local highlightRange = tonumber(self:try_get("highlightNearestEnemies", 0)) or 0
+                if highlightRange > 0 and target.token.valid then
+                    local best = nil
+                    local nearest = {}
+                    for _,tok in ipairs(dmhub.GetTokens{}) do
+                        if tok.valid and tok.properties ~= nil and tok.charid ~= casterToken.charid and (not casterToken:IsFriend(tok)) then
+                            local dead = false
+                            pcall(function() dead = tok.properties:IsDead() end)
+                            if not dead then
+                                local d = target.token:Distance(tok)
+                                if d <= highlightRange then
+                                    if best == nil or d < best then
+                                        best = d
+                                        nearest = {tok}
+                                    elseif d == best then
+                                        nearest[#nearest+1] = tok
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    for _,tok in ipairs(nearest) do
+                        dmhub.PulseHighlightToken(tok.id)
+                    end
+                end
+
                 -- Expose Cast (with its memory), Target, Mode, etc. to GoblinScript
                 -- in the rule string so authors can write damage formulas like
                 -- {Min(1, Cast.Spaces Moved) * Might} damage or reference
@@ -427,7 +460,7 @@ local g_rulePatterns = {
     },
 
     {
-        pattern = "^(?<vertical>vertical )?(?<movement>pull|push|slide) +(?<straightup>straight up +)?(?<distance>[0-9]+)(?<ignorestabilityifcompanion>[,;]? ignoring stability if (your )?companion is adjacent( to the target)?)?(?<ignorestability>[,;]? (ignoring stability|this (push|pull|slide) ignores the target.s stability))?",
+        pattern = "^(?<vertical>vertical )?(?<movement>pull|push|slide) +(?<straightup>straight up +)?(?<distance>[0-9]+)(?<ignorestabilityifcompanion>[,;]? ignoring stability if (your )?companion is adjacent( to the target)?)?(?<ignorestability>[,;]? (ignoring stability|this (push|pull|slide) ignores the target.s stability))?(?<nodamage>[,;]? without damage)?",
         execute = function(behavior, ability, casterToken, targetToken, options, match)
 
             print("INVOKE:: EXECUTE FORCE MOVE", match.movement, match.distance)
@@ -450,21 +483,30 @@ local g_rulePatterns = {
                 end
             end
 
+            --A creature force-moving a target IT has grabbed overrides forced
+            --movement immunity: the grab itself (and conditions riding on it, e.g.
+            --the Shambling Mound engulfing a grabbed victim) grants "Cannot Be
+            --Force Moved", which would otherwise block the grabber from dragging
+            --their own captive.
+            local grabbedByCaster = false
+            local targetGrabbed = nil
+            local grabbedCondition = CharacterCondition.conditionsByName["grabbed"]
+            if grabbedCondition ~= nil then
+                targetGrabbed = targetToken.properties:HasCondition(grabbedCondition.id)
+                grabbedByCaster = (targetGrabbed == casterToken.charid)
+            end
+
             local targetImmune = targetToken.properties:CalculateNamedCustomAttribute("Cannot Be Force Moved")
-            if targetImmune > 0 then
+            if targetImmune > 0 and (not grabbedByCaster) then
                 print("Target is immune to forced movement, not executing")
                 ShowFailMessage("Immune to Forced Movement")
                 return
             end
 
-            local grabbedCondition = CharacterCondition.conditionsByName["grabbed"]
-            if grabbedCondition ~= nil then
-                local targetGrabbed = targetToken.properties:HasCondition(grabbedCondition.id)
-                if targetGrabbed and targetGrabbed ~= casterToken.charid then
-                    print("Target is grabbed, and cannot be force moved.")
-                    ShowFailMessage("Grabbed: Cannot be Force Moved")
-                    return
-                end
+            if targetGrabbed and targetGrabbed ~= casterToken.charid then
+                print("Target is grabbed, and cannot be force moved.")
+                ShowFailMessage("Grabbed: Cannot be Force Moved")
+                return
             end
 
 
@@ -602,6 +644,13 @@ local g_rulePatterns = {
                 --squad-coordinated action, so opt out explicitly.
                 disableSquadCoordination = true,
             }
+
+            --"pull 6, without damage" variant: the movement plays normally but no
+            --collision damage or collide triggers fire for anyone involved (e.g.
+            --the Shambling Mound dragging an engulfed creature into its sack).
+            if match.nodamage then
+                abilityAttr.noCollisionDamage = true
+            end
 
             if stability > 0 then
                 adjustments[#adjustments+1] = string.format("Stability: -%d", stability)
