@@ -262,8 +262,14 @@ local TRIGGER_METADATA = {
     },
     creaturedeath = {
         label = "Death",
-        description = "Fires when the creature dies.",
+        description = "Fires when the creature dies, with the damage type that killed them. To react once to several squad minions dying to the same hit, use Squad Minions Killed instead.",
         tags = {"death", "die", "dead", "kill"},
+        group = "combat",
+    },
+    squadminiondeaths = {
+        label = "Squad Minions Killed",
+        description = "Fires once when one or more minions of this creature's squad are killed by a single application of damage, once the deaths are confirmed. Provides the number killed and the damage type. For an individual minion reacting to its own death, use Death instead.",
+        tags = {"squad", "minion", "death", "killed", "simultaneous", "batch", "wipe"},
         group = "combat",
     },
     zerohitpoints = {
@@ -1550,6 +1556,59 @@ local function buildDisplaySection(ability, refreshSection, fireChange)
                 if fireChange then fireChange() end
             end,
         })
+
+    -- Implementation Status. Authoring metadata shared with the active-ability
+    -- editor -- the same traffic-light widget. TriggeredAbility inherits the
+    -- `implementation` / `implementationDetails` fields from ActivatedAbility,
+    -- but the sectioned editor never surfaced them, so triggered abilities
+    -- (class heroic-resource rolls, aura reactions, etc.) were stuck at the
+    -- default value 1 and their in-game roll cards always rendered the
+    -- "Unimplemented" chip with no way to change it. Notes collapse when the
+    -- status is Unimplemented, mirroring the active-ability editor.
+    local implNotesRow
+    implNotesRow = gui.Panel{
+        classes = {"nae-field-row",
+                   cond(ability:try_get("implementation", 1) == gui.ImplementationStatus.Unimplemented, "collapsed-anim")},
+        children = {
+            gui.Label{
+                classes = {"nae-field-label"},
+                text = "Implementation Notes",
+            },
+            gui.Input{
+                classes = {"formInput"},
+                placeholderText = "Notes on unfinished parts...",
+                multiline = true,
+                width = "100%",
+                height = "auto",
+                minHeight = 60,
+                textAlignment = "topleft",
+                characterLimit = 2048,
+                text = ability:try_get("implementationDetails", ""),
+                change = function(element)
+                    ability.implementationDetails = element.text
+                    if fireChange then fireChange() end
+                end,
+            },
+        },
+    }
+
+    children[#children + 1] = fieldRow("Implementation Status",
+        gui.ImplementationStatusPanel{
+            halign = "left",
+            valign = "center",
+            value = ability:try_get("implementation", 1),
+            change = function(element)
+                ability.implementation = element.value
+                if implNotesRow ~= nil and implNotesRow.valid then
+                    implNotesRow:SetClass("collapsed-anim",
+                        element.value == gui.ImplementationStatus.Unimplemented)
+                end
+                if fireChange then fireChange() end
+            end,
+        },
+        "How complete this trigger's automation is. Drives the status chip on its in-game roll card.")
+
+    children[#children + 1] = implNotesRow
 
     -- Card overrides. Each row maps to a Trigger Preview card row; blank
     -- passes through to derivation. Keep this group below the Icon/Description

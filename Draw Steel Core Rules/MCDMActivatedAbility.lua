@@ -4,6 +4,13 @@ local mod = dmhub.GetModLoading()
 --kept as a default so old serialized data doesn't error on access.
 ActivatedAbility.effectImplemented = true
 
+--Marks an ability as a hide attempt (e.g. the Hide maneuver). While such an
+--ability is being targeted, the action bar draws a sight arrow to every enemy
+--labeled with whatever obscures that enemy's view of the caster (cover,
+--concealment, no line of sight). The labels only inform the table: whether
+--the hide actually succeeds is adjudicated by the players.
+ActivatedAbility.hideAttempt = false
+
 local g_settingTargetObjects = setting {
     id = "targetobjects",
     default = false,
@@ -1549,6 +1556,30 @@ function ActivatedAbility:Render(options, params)
         end
     end
 
+    -- Lockdown-style warning: if this ability would let the CASTER shift but the
+    -- caster is currently prevented from shifting (its shift distance forced to 0 by
+    -- a debuff such as the Radenwight Bruxer's Lockdown aura), warn that the shift
+    -- has no effect. Informational only -- the rest of the ability (e.g. the attack)
+    -- still resolves. Ability-granted shifts compute their own distance and bypass
+    -- the Disengage-Speed lever, so this note is how the restriction surfaces there.
+    local shiftBlockedPanel = nil
+    if creatureProperties ~= nil and self:GrantsCasterShift() then
+        local sourceName = creatureProperties:ShiftBlockedBySourceName()
+        if sourceName ~= nil then
+            local msg = string.format("You can't shift while adjacent to %s (Lockdown trait), so the shift from this ability has no effect.", sourceName)
+            shiftBlockedPanel = gui.Label {
+                bgimage = true,
+                classes = { "bgDanger" },
+                width = "100%",
+                height = "auto",
+                fontSize = 14,
+                hpad = 16,
+                vpad = 4,
+                text = msg,
+            }
+        end
+    end
+
     -- Optional caller-supplied danger-tinted footer note, appended at the very
     -- bottom of the card. Reuses the suppressPanel styling. Used by the Villain
     -- Action strip to explain a gated drawer ("already used this round/encounter")
@@ -2386,6 +2417,7 @@ function ActivatedAbility:Render(options, params)
 
         suppressPanel,
         reminderPanel,
+        shiftBlockedPanel,
 
         footerPanel,
 
@@ -3877,3 +3909,91 @@ ActivatedAbility.RegisterProperty {
     name = "All Force Move From Caster",
     description = "If true, push/pull/slide effects from this ability use the original caster as the source for size-difference calculations (Big Versus Little), rather than this ability's caster. Generally only used within Invoked Abilities",
 }
+
+-- Returns true if using this ability grants the CASTER a shift (a self-shift),
+-- detected from the ability's tier / command rule / description text (e.g. "you
+-- shift up to N squares", "you can shift"). Applies to ANY such ability, not just
+-- Fade. Used by the ability card to warn when the caster currently can't shift
+-- (e.g. adjacent to a Radenwight Bruxer's Lockdown), so the granted shift is moot.
+function ActivatedAbility:GrantsCasterShift()
+    local function textGrantsShift(s)
+        if type(s) ~= "string" then
+            return false
+        end
+        s = string.lower(s)
+        return string.find(s, "you shift", 1, true) ~= nil
+            or string.find(s, "you can shift", 1, true) ~= nil
+            or string.find(s, "you may shift", 1, true) ~= nil
+    end
+
+    if textGrantsShift(self:try_get("description", "")) then
+        return true
+    end
+
+    local behaviors = self:try_get("behaviors")
+    if behaviors == nil then
+        return false
+    end
+    for _, b in ipairs(behaviors) do
+        local tiers = nil
+        pcall(function() tiers = b.tiers end)
+        if type(tiers) == "table" then
+            for _, t in ipairs(tiers) do
+                if textGrantsShift(t) then
+                    return true
+                end
+            end
+        end
+        local rule = nil
+        pcall(function() rule = b.rule end)
+        if textGrantsShift(rule) then
+            return true
+        end
+    end
+    return false
+end
+
+-- If this creature is currently prevented from shifting (its Disengage/shift
+-- distance forced to 0 by a Lockdown aura), returns the DISPLAY NAME of the monster
+-- imposing it (e.g. "Radenwight Bruxer 1"), so warnings can name the source;
+-- otherwise nil. Falls back to the debuff's effect name if the source token can't
+-- be resolved.
+function creature:ShiftBlockedBySourceName()
+    if self:CarefulMovementSpeed() > 0 then
+        return nil
+    end
+
+    -- Prefer the actual monster imposing the Lockdown aura.
+    local sourceName = nil
+    pcall(function()
+        local src = dmhub.EvalGoblinScriptToObject('AurasCaster("Lockdown")', self:LookupSymbol(), "Lockdown source")
+        if type(src) == "table" then
+            local tid = dmhub.LookupTokenId(src)
+            if tid ~= nil and tid ~= "" then
+                local tok = dmhub.GetTokenById(tid)
+                if tok ~= nil and tok.valid then
+                    sourceName = tok.name
+                end
+            end
+        end
+    end)
+    if sourceName ~= nil and sourceName ~= "" then
+        return sourceName
+    end
+
+    -- Fallback: the effect (modifier) name that zeroed the shift distance.
+    local mods = nil
+    pcall(function() mods = self:DescribeModificationsToNamedCustomAttribute("Disengage Speed") end)
+    if mods ~= nil then
+        for _, m in ipairs(mods) do
+            if m.debuff then
+                local nm = nil
+                pcall(function() nm = m.mod.name end)
+                if nm ~= nil and nm ~= "" then
+                    return nm
+                end
+            end
+        end
+    end
+    return nil
+end

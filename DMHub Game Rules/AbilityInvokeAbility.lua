@@ -352,6 +352,13 @@ function ActivatedAbilityInvokeAbilityBehavior:Cast(ability, casterToken, target
                             abilityClone.keywords = ability.keywords
                         end
 
+                        --Override the invoked ability's number of targets, for stat block
+                        --wordings like "uses X against ONE creature" when X normally
+                        --targets more (e.g. Spiteful Retort invoking Voracious Mastication).
+                        if self:try_get("overrideNumTargets") ~= nil then
+                            abilityClone.numTargets = tostring(self.overrideNumTargets)
+                        end
+
                         --For custom abilities the invoker (the creature actually casting the
                         --invoked ability) doesn't get its modifier pipeline run automatically --
                         --normal abilities go through GetActivatedAbilities which applies modifiers,

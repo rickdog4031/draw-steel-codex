@@ -630,9 +630,136 @@ function creature:HeroicResourceHighWaterMarkForTurn()
     return quantity
 end
 
+local g_conditionHiddenId = "31daf7f6-f77c-4f73-8eab-43e2d0f123c0"
+
+--While a director-controlled creature has the Hidden condition, its token can
+--optionally be made invisible to players. Heroes never auto-vanish: their
+--enemies are director-run and the director must always see everything, so for
+--heroes the Hidden benefit is enforced at targeting time instead.
+--(forward-declared: SyncHiddenInvisibility reads it, the setting's onchange
+--calls SyncHiddenInvisibility)
+local g_settingHiddenInvisible
+
+--charids with a deferred invisibility sync pending, so a burst of refreshes
+--only schedules one write.
+local g_hiddenInvisPending = {}
+
+--Keeps token.invisibleToPlayers in step with the Hidden condition for
+--director-controlled creatures. We only act on TRANSITIONS, recorded in the
+--serialized hiddenInvisibilityApplied field: invisibility we did not apply
+--(e.g. encounter groups staged invisible by the director) is never touched,
+--and a director who manually reveals a still-hidden monster is not fought.
+--The write is deferred out of the refresh path to avoid re-entrant uploads.
+local function SyncHiddenInvisibility(token)
+    --Only the director's client manages this.
+    if not dmhub.isDM then
+        return
+    end
+
+    local c = token.properties
+    if c == nil then
+        return
+    end
+
+    local shouldHide = g_settingHiddenInvisible:Get() and (not token.playerControlled)
+        and (c:HasCondition(g_conditionHiddenId) ~= false)
+    local applied = c:try_get("hiddenInvisibilityApplied", false)
+    if shouldHide == applied then
+        return
+    end
+
+    local charid = token.charid
+    if g_hiddenInvisPending[charid] then
+        return
+    end
+    g_hiddenInvisPending[charid] = true
+
+    --Vanishing is delayed so the "Hidden" float text and status animation get
+    --time to play over the still-visible token before it disappears; players
+    --need a beat to register what happened. Revealing is near-instant so
+    --players are never late seeing a monster that is no longer hidden.
+    local delay = 0.05
+    if shouldHide then
+        delay = 2.0
+    end
+
+    dmhub.Schedule(delay, function()
+        g_hiddenInvisPending[charid] = nil
+        if mod.unloaded then
+            return
+        end
+
+        local tok = dmhub.GetTokenById(charid)
+        if tok == nil or (not tok.valid) or tok.properties == nil then
+            return
+        end
+
+        local cr = tok.properties
+        local hideNow = g_settingHiddenInvisible:Get() and (not tok.playerControlled)
+            and (cr:HasCondition(g_conditionHiddenId) ~= false)
+        local appliedNow = cr:try_get("hiddenInvisibilityApplied", false)
+        if hideNow == appliedNow then
+            return
+        end
+
+        tok.invisibleToPlayers = hideNow
+        tok:ModifyProperties{
+            description = "Hidden condition visibility",
+            undoable = false,
+            execute = function()
+                cr.hiddenInvisibilityApplied = hideNow
+
+                if not hideNow then
+                    --On reveal, clients that couldn't see the token missed the
+                    --sheet's own local "crossed out Hidden" status float (it
+                    --fires from icon diffing at condition-removal time, while
+                    --the token was still invisible to them). Re-fire the same
+                    --visual through the networked animation channel now that
+                    --the token is visible again.
+                    local conditionsTable = dmhub.GetTable(CharacterCondition.tableName)
+                    local conditionInfo = conditionsTable[g_conditionHiddenId]
+                    if conditionInfo ~= nil then
+                        cr:AddAnimation{
+                            animType = "statusDestroy",
+                            info = {
+                                icon = conditionInfo.iconid,
+                                statusText = (string.gsub(conditionInfo.name, "%s+$", "")),
+                                --floatstatus mutates info.style, so pass a copy.
+                                style = DeepCopy(conditionInfo:try_get("display", {})),
+                            },
+                        }
+                    end
+                end
+            end,
+        }
+    end)
+end
+
+g_settingHiddenInvisible = setting{
+    id = "strict:hiddeninvisible",
+    description = "Hidden Monsters Invisible to Players",
+    help = "While a creature the director controls has the Hidden condition, its token is invisible to players. Heroes always remain visible.",
+    storage = "game",
+    editor = "check",
+    default = false,
+    section = "GameStrictRules",
+    onchange = function()
+        --RefreshToken only runs on game-state changes, so re-evaluate every
+        --token directly when the setting flips (in particular, revealing
+        --monsters when it is toggled off).
+        for _, tok in ipairs(dmhub.allTokens) do
+            SyncHiddenInvisibility(tok)
+        end
+    end,
+}
+
 function creature:RefreshToken(token)
     if (not mod.unloaded) and self.minion then
         self:RefreshSquadInfo(token)
+    end
+
+    if not mod.unloaded then
+        SyncHiddenInvisibility(token)
     end
 
     if (not mod.unloaded) then
@@ -841,10 +968,25 @@ function monster.OnCreateFromBestiary(self, token, groupid)
 end
 
 function monster.FindFreshSquadName(monster_type)
+    --The g_minionSquadTables registry is client-local and wiped by a Lua
+    --reload, so also consult the squads live tokens actually occupy (including
+    --the implicit "<type> Squad 1" default for squadless minions) or a freshly
+    --reloaded client can hand out a name an existing squad is already using.
+    local usedNames = {}
+    for _,tok in ipairs(dmhub.GetTokens{haveProperties = true}) do
+        if tok.valid and tok.properties.minion then
+            local squadName = nil
+            pcall(function() squadName = tok.properties:MinionSquad() end)
+            if squadName ~= nil then
+                usedNames[squadName] = true
+            end
+        end
+    end
+
     for i = 1, 1000 do
         local squadid = string.format("%s Squad %d", monster_type, i)
         local minionSquad = g_minionSquadTables[squadid]
-        if minionSquad == nil then
+        if minionSquad == nil and usedNames[squadid] == nil then
             g_minionSquadTables[squadid] = {
                 name = squadid,
             }
@@ -2317,6 +2459,15 @@ end
 
 --- @return boolean
 function monster:IsDead()
+    --Death-gated squad minions (e.g. Group Appetite trolls): the shared pool
+    --reaching 0 does not kill them, so a minion only reads as dead once its
+    --death is actually confirmed (director skull click or a trait trigger
+    --removing it). Without this, a negative pool paints every member with the
+    --dead-token overlay and gets the squad skipped in initiative, so the
+    --end-of-turn death trigger could never fire.
+    if self.minion and (self:CalculateNamedCustomAttribute("Gated Minion Deaths") or 0) > 0 then
+        return self.minionDead
+    end
     return self:CurrentHitpoints() <= self:KillThresholdStamina()
 end
 
@@ -3488,17 +3639,22 @@ function creature:InflictCondition(conditionid, args)
                 --context-appropriate instead of "I can't be Hidden!". Otherwise
                 --fall back to the per-condition variations table, then a generic
                 --line.
-                local text = self:GetConditionImmunityMessage(conditionid)
-                    or g_conditionImmunitySpeech[string.lower(conditionInfo.name)]
-                    or string.format("I can't be %s!", conditionInfo.name)
                 local language = self:CurrentlySpokenLanguage()
                 if language ~= nil then
+                    --the creature can speak: use its custom immunity line, a
+                    --flavorful per-condition variation, or a generic first-person
+                    --fallback, rendered as an in-character speech bubble.
+                    local text = self:GetConditionImmunityMessage(conditionid)
+                        or g_conditionImmunitySpeech[string.lower(conditionInfo.name)]
+                        or string.format("I can't be %s!", conditionInfo.name)
                     self:CharacterSpeech{
                         text = text,
                         langid = language,
                     }
                 else
-                    self:FloatLabel(text, "white")
+                    --no spoken language: a first-person speech line reads oddly as
+                    --floating text, so show a plain descriptive label instead.
+                    self:FloatLabel(string.format("Cannot be %s", conditionInfo.name), "white")
                 end
             end
         end
@@ -4957,6 +5113,260 @@ creature.minionDamageTime = 0
 --applied to that squad's pool this cast.
 local g_summonerSquadCastDamage = setmetatable({}, {__mode = "k"})
 
+--Batching and confirmation gating for the "squadminiondeaths" trigger.
+--
+--A single cast that hits several minions of a squad applies damage in
+--SEPARATE TakeDamage calls (one per target), each of which can empty one
+--stamina band. A naive per-call dispatch would fire the trigger once per
+--call with 1 kill each, so a condition like "Minions Killed >= 2" could
+--never pass on the canonical area-wipe case. Each application's kills
+--therefore accumulate into a batch keyed by (squad, cast identity).
+--
+--A batch does NOT flush on a timer: squad minion deaths are not real until
+--the director confirms them by clicking the red skulls, which fires the
+--creaturedeath trigger and then calls creature:MinionDeath() on the
+--confirmed minion (see DrawSteelTokenHud.lua). Flushing earlier races that
+--flow: the placement UI of a triggered summon goes up underneath the
+--confirmation clicks and the Monster Death removals tear it down. Instead
+--the batch flushes exactly when the number of CONFIRMED deaths reaches the
+--batch's kill count. Confirmations are observed two ways:
+--  * synchronously, via the creature:MinionDeath() wrapper below, on the
+--    client where the skulls are clicked; and
+--  * by polling, for batches held on a different client than the one
+--    confirming (damage accumulates on the damaging client, confirmation
+--    happens on the director's): a recorded squad member whose token has
+--    been removed or marked minionDead counts as confirmed.
+--If the director never confirms, the batch simply stays pending: deaths
+--that were never confirmed never happened. A batch is dropped if the
+--squad's shared pool is healed back above the killed bands (deaths undone).
+--
+--The flush dispatches the trigger event ONCE per damage type group (2 fire
+--kills + 1 untyped kill in one cast = one dispatch with 2 kills of fire and
+--one dispatch with 1 kill of none), on a single creature so a squad-wide
+--trait fires once, not once per member: a live surviving squad member when
+--one exists (reliable now that confirmations are complete), or on a full
+--squad wipe the last-confirmed minion at its confirmation moment, while its
+--token is still valid (the Monster Death removal lands behind a Delay
+--behavior). Damage with no cast (falling, terrain) gets its own batch per
+--application but is confirmation-gated all the same.
+local g_squadMinionDeathBatches = {}
+local g_squadMinionDeathBatchSeq = 0
+
+--Flushes the batch if enough deaths are confirmed. lastConfirmed is the
+--creature whose confirmation completed the batch (nil on the polling path);
+--it is the dispatch target on a full squad wipe, while its token is still
+--valid.
+local function CheckFlushSquadMinionDeathBatch(key, lastConfirmed)
+    local batch = g_squadMinionDeathBatches[key]
+    if batch == nil then
+        return
+    end
+
+    if batch.confirmedCount < batch.totalKills then
+        return
+    end
+
+    g_squadMinionDeathBatches[key] = nil
+
+    --Prefer dispatching on a squad member that survived: still on the map,
+    --not confirmed, not director-marked dead, shared pool alive. Every
+    --member of the squad carries the same traits, so any live member is an
+    --equivalent dispatch target, and the batch still dispatches exactly
+    --once.
+    local victim = nil
+    for _,tok in ipairs(dmhub.GetTokens()) do
+        if tok.valid and tok.properties ~= nil and tok.properties.minion
+            and (not tok.properties.minionDead)
+            and (not batch.confirmed[tok.charid])
+            and tok.properties:MinionSquad() == batch.squadName
+            and (not tok.properties:IsDead()) then
+            victim = tok.properties
+            break
+        end
+    end
+
+    --Full squad wipe: dispatch from the last-confirmed minion before its
+    --removal lands, falling back to the most recently damaged one. The
+    --summon pipeline tolerates a caster that goes defunct mid-cast (see
+    --ApplySummonLook and the auto-place fallback in AbilitySummon.lua).
+    if victim == nil then
+        victim = lastConfirmed
+    end
+    if victim == nil or dmhub.LookupToken(victim) == nil then
+        victim = batch.victim
+    end
+    if victim == nil or dmhub.LookupToken(victim) == nil then
+        return
+    end
+
+    for damagetype,group in pairs(batch.groups) do
+        victim:DispatchEvent("squadminiondeaths", {
+            minionskilled = group.kills,
+            damage = group.damage,
+            damagetype = damagetype,
+            attacker = group.attacker,
+            hasattacker = group.attacker ~= nil,
+            cast = batch.cast,
+            hascast = batch.cast ~= nil,
+        })
+    end
+end
+
+--Synchronous confirmation hook: called from the creature:MinionDeath()
+--wrapper below at the moment a minion death is confirmed on this client.
+local function NoteSquadMinionDeathConfirmed(minion)
+    if not minion.minion then
+        return
+    end
+    local squadName = minion:MinionSquad()
+    if squadName == nil then
+        return
+    end
+    local token = dmhub.LookupToken(minion)
+    if token == nil then
+        return
+    end
+    local charid = token.charid
+
+    for key,batch in pairs(g_squadMinionDeathBatches) do
+        if batch.squadName == squadName and batch.members[charid] and (not batch.confirmed[charid]) then
+            batch.confirmed[charid] = true
+            batch.confirmedCount = batch.confirmedCount + 1
+            CheckFlushSquadMinionDeathBatch(key, minion)
+        end
+    end
+end
+
+--Polling observer for a pending batch: picks up confirmations that happened
+--on another client (a recorded member's token removed or marked minionDead)
+--and drops the batch if the squad's pool has been healed back above the
+--killed bands. Never fires the trigger on time alone.
+local function PollSquadMinionDeathBatch(key)
+    local batch = g_squadMinionDeathBatches[key]
+    if batch == nil then
+        return
+    end
+
+    for charid,_ in pairs(batch.members) do
+        if not batch.confirmed[charid] then
+            local tok = dmhub.GetTokenById(charid)
+            if tok == nil or (not tok.valid) or tok.properties == nil or tok.properties.minionDead then
+                batch.confirmed[charid] = true
+                batch.confirmedCount = batch.confirmedCount + 1
+            end
+        end
+    end
+
+    --deaths undone: a live member's pool shows more full stamina bands than
+    --the last damage application left behind. Drop the batch.
+    if batch.singleHealth ~= nil and batch.singleHealth > 0 then
+        for _,tok in ipairs(dmhub.GetTokens()) do
+            if tok.valid and tok.properties ~= nil and tok.properties.minion
+                and (not tok.properties.minionDead)
+                and tok.properties:MinionSquad() == batch.squadName then
+                local bands = math.max(0, math.ceil(tok.properties:CurrentHitpoints() / batch.singleHealth))
+                if bands > batch.expectedBands then
+                    g_squadMinionDeathBatches[key] = nil
+                    return
+                end
+                break
+            end
+        end
+    end
+
+    CheckFlushSquadMinionDeathBatch(key, nil)
+
+    if g_squadMinionDeathBatches[key] ~= nil then
+        dmhub.Schedule(0.3, function()
+            if mod.unloaded then
+                return
+            end
+            PollSquadMinionDeathBatch(key)
+        end)
+    end
+end
+
+--Records one damage application's minion kills into the per-cast batch.
+--Counts kills even when there is no attacker. minionsAfter/healthSingle
+--describe the pool state this application left behind; the poll uses them
+--for the healed-back staleness check.
+local function AccumulateSquadMinionDeaths(victim, eventArg, minionsKilled, minionsAfter, healthSingle)
+    local squadName = victim:MinionSquad() or "squad"
+
+    local castKey
+    if eventArg.cast ~= nil then
+        castKey = tostring(eventArg.cast)
+    else
+        --no cast to batch against: each damage application is its own batch.
+        g_squadMinionDeathBatchSeq = g_squadMinionDeathBatchSeq + 1
+        castKey = string.format("nocast-%d", g_squadMinionDeathBatchSeq)
+    end
+
+    local key = string.format("%s|%s", squadName, castKey)
+    local batch = g_squadMinionDeathBatches[key]
+    if batch == nil then
+        --record the squad's live membership now, before any confirmation:
+        --confirmations are counted strictly against this set.
+        local members = {}
+        for _,tok in ipairs(dmhub.GetTokens()) do
+            if tok.valid and tok.properties ~= nil and tok.properties.minion
+                and (not tok.properties.minionDead)
+                and tok.properties:MinionSquad() == squadName then
+                members[tok.charid] = true
+            end
+        end
+
+        batch = {
+            victim = victim,
+            squadName = squadName,
+            cast = eventArg.cast,
+            groups = {},
+            totalKills = 0,
+            members = members,
+            confirmed = {},
+            confirmedCount = 0,
+            expectedBands = 0,
+            singleHealth = healthSingle,
+        }
+        g_squadMinionDeathBatches[key] = batch
+
+        dmhub.Schedule(0.3, function()
+            if mod.unloaded then
+                return
+            end
+            PollSquadMinionDeathBatch(key)
+        end)
+    end
+
+    batch.victim = victim
+    batch.totalKills = batch.totalKills + minionsKilled
+    batch.expectedBands = minionsAfter
+    batch.singleHealth = healthSingle
+
+    local damagetype = eventArg.damagetype or "none"
+    local group = batch.groups[damagetype]
+    if group == nil then
+        group = { kills = 0, damage = 0, attacker = nil }
+        batch.groups[damagetype] = group
+    end
+    group.kills = group.kills + minionsKilled
+    group.damage = group.damage + (eventArg.damage or 0)
+    if group.attacker == nil then
+        group.attacker = eventArg.attacker
+    end
+end
+
+--Confirmation wrapper: DrawSteelTokenHud's skull click calls MinionDeath()
+--on the confirmed minion right after firing its creaturedeath trigger.
+--Count the confirmation (possibly flushing a completed batch) BEFORE the
+--base implementation runs, while the squad bookkeeping is still intact and
+--the minion's token is still valid.
+local g_baseMinionDeath = creature.MinionDeath
+function creature:MinionDeath()
+    NoteSquadMinionDeathConfirmed(self)
+    g_baseMinionDeath(self)
+end
+
 function creature.TakeDamage(self, amount, note, info)
     info = info or {}
     if type(amount) == 'string' then
@@ -5168,24 +5578,35 @@ function creature.TakeDamage(self, amount, note, info)
             attacker:DispatchEvent("dealdamage", args)
         end
 
-        --Per-encounter hero stat: minion kills. Count how many full single-minion
-        --stamina bands this hit emptied in the squad's shared pool (hpBefore ->
-        --hpBefore - amount) and credit the attacker that many. This naturally
-        --handles "multiple minions hit with one blow": area hits reduce the pool
-        --once per minion (summed across calls), and the Strikes-with-Multiple-
-        --Targets clamp leaves amount == 0 on the redundant calls (killed == 0).
-        --Overkill is bounded by minionsBefore, so the pool dropping below zero
-        --never over-counts. TrackHeroStats self-guards to heroes in the live
-        --encounter, so non-hero attackers are dropped. Minions return here and
-        --never reach the regular-monster "kills" path below.
-        if minionKillHealthSingle ~= nil and minionKillHealthSingle > 0 and amount > 0 and eventArg.attacker ~= nil then
+        --Count how many full single-minion stamina bands this hit emptied in
+        --the squad's shared pool (hpBefore -> hpBefore - amount). This
+        --naturally handles "multiple minions hit with one blow": area hits
+        --reduce the pool once per minion (summed across calls), and the
+        --Strikes-with-Multiple-Targets clamp leaves amount == 0 on the
+        --redundant calls (killed == 0). Overkill is bounded by minionsBefore,
+        --so the pool dropping below zero never over-counts. The count feeds
+        --two consumers: the per-encounter hero kill stat (attacker only;
+        --TrackHeroStats self-guards to heroes in the live encounter) and the
+        --squadminiondeaths trigger batch (counted even with no attacker).
+        --Minions return here and never reach the regular-monster "kills"
+        --path below.
+        if minionKillHealthSingle ~= nil and minionKillHealthSingle > 0 and amount > 0 then
             local minionsBefore = math.max(0, math.ceil(minionKillHpBefore / minionKillHealthSingle))
             local minionsAfter = math.max(0, math.ceil((minionKillHpBefore - amount) / minionKillHealthSingle))
             local minionsKilled = minionsBefore - minionsAfter
             if minionsKilled > 0 then
-                local killerToken = dmhub.LookupToken(eventArg.attacker)
-                if killerToken ~= nil then
-                    LiveEncounter.TrackHeroStats(killerToken.charid, "minionKills", minionsKilled)
+                if eventArg.attacker ~= nil then
+                    local killerToken = dmhub.LookupToken(eventArg.attacker)
+                    if killerToken ~= nil then
+                        LiveEncounter.TrackHeroStats(killerToken.charid, "minionKills", minionsKilled)
+                    end
+                end
+
+                --batch for the squadminiondeaths trigger; see the batching
+                --machinery above TakeDamage. The batch flushes only once the
+                --director confirms the deaths.
+                if not info.doesNotTrigger then
+                    AccumulateSquadMinionDeaths(self, eventArg, minionsKilled, minionsAfter, minionKillHealthSingle)
                 end
             end
         end
@@ -5574,7 +5995,7 @@ function creature.Heal(self, amount, note)
     }
 
 
-    self:DispatchEvent("regainhitpoints", {})
+    self:DispatchEvent("regainhitpoints", {healed = amount})
 end
 
 function creature.SetStaminaDirect(self, amount, note)
@@ -6242,6 +6663,48 @@ creature.RegisterSymbol {
         seealso = {},
         examples = {
             'Caster.BoundOngoingEffect(Target, "Bloodbound")',
+        },
+    }
+}
+
+creature.RegisterSymbol {
+    symbol = "distancetoboundcreature",
+    lookup = function(c)
+        return function(effectName)
+            effectName = string.lower(effectName)
+            local selfToken = dmhub.LookupToken(c)
+            if selfToken == nil or (not selfToken.valid) then
+                return 9999
+            end
+
+            local result = 9999
+            local ongoingEffects = c:try_get("ongoingEffects", {})
+            local t = dmhub.GetTable("characterOngoingEffects")
+            for _, ongoingEffect in ipairs(ongoingEffects) do
+                local effectInfo = t[ongoingEffect.ongoingEffectid]
+                if effectInfo ~= nil and string.lower(effectInfo.name) == effectName and ongoingEffect.bondid then
+                    local tokens = creature.GetTokensWithBoundOngoingEffect(ongoingEffect.bondid)
+                    for _, token in ipairs(tokens) do
+                        if token.charid ~= selfToken.charid then
+                            local dist = selfToken:Distance(token)
+                            if dist ~= nil and dist < result then
+                                result = dist
+                            end
+                        end
+                    end
+                end
+            end
+
+            return result
+        end
+    end,
+    help = {
+        name = "DistanceToBoundCreature",
+        type = "function",
+        desc = "The distance in squares to the nearest other creature bound to this creature by the given ongoing effect. 9999 if there is no such creature.",
+        seealso = {},
+        examples = {
+            'DistanceToBoundCreature("Repelling Psihander") <= 1',
         },
     }
 }

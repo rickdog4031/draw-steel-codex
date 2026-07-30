@@ -2673,6 +2673,11 @@ function ActivatedAbility:Cast(casterToken, targets, options)
 			ability = self,
 			targets = targets,
             mode = options.symbols.mode or 1,
+            --Owner of this cast. Trigger dispatch forwards cast symbols into
+            --reactions cast by OTHER creatures (e.g. an opportunity attack fired
+            --during this cast's movement); consumers that credit results back to
+            --the cast (Cast.DamageDealt) use this to tell whose attack it was.
+            casterid = casterToken.id,
             --LuaShape (or nil for non-area abilities). Stashed so GoblinScript
             --formulas can call Cast.WithinArea(creature) to test whether a
             --creature (e.g. Caster.Companion) is inside the cast's area shape.
@@ -3475,6 +3480,48 @@ function ActivatedAbilityBehavior:IsFiltered(ability, casterToken, options)
     return false
 end
 
+--Collects the attackable object tokens within range of the caster that pass
+--this ability's targetFilter and reasonedFilters. Used by the
+--'attackable_objects' behavior applyto and by the action bar to highlight the
+--objects an ability will affect while it is being confirmed. rangeOverride
+--replaces the ability's range; filterOverride (GoblinScript, evaluated against
+--each object) replaces the ability's own filters when non-empty.
+--- @return {token: CharacterToken}[]
+function ActivatedAbility:GatherAttackableObjects(casterToken, rangeOverride, filterOverride)
+    local result = {}
+    if casterToken == nil or not casterToken.valid or casterToken.properties == nil then
+        return result
+    end
+    local range = rangeOverride or self:GetRange(casterToken.properties)
+    local override = filterOverride or ""
+    for _,tok in ipairs(dmhub.allTokensIncludingObjects) do
+        if tok.valid and tok.isObject and tok.isAttackableObject and casterToken:Distance(tok) <= range then
+            local passes = true
+            if override ~= "" then
+                passes = GoblinScriptTrue(ExecuteGoblinScript(override, tok.properties:LookupSymbol{}, 0, "Object filter override"))
+            else
+                local filter = self:try_get("targetFilter", "")
+                if filter ~= "" then
+                    local targetSymbols = { target = GenerateSymbols(tok.properties) }
+                    passes = GoblinScriptTrue(ExecuteGoblinScript(filter, casterToken.properties:LookupSymbol(targetSymbols), 0, "Object target filter"))
+                end
+                if passes then
+                    for _,rf in ipairs(self:try_get("reasonedFilters", {})) do
+                        local formula = rf.formula
+                        if passes and formula ~= nil and formula ~= "" then
+                            passes = GoblinScriptTrue(ExecuteGoblinScript(formula, tok.properties:LookupSymbol{}, 0, "Object reasoned filter"))
+                        end
+                    end
+                end
+            end
+            if passes then
+                result[#result+1] = { token = tok }
+            end
+        end
+    end
+    return result
+end
+
 function ActivatedAbilityBehavior:ApplyToTargets(ability, casterToken, targets, options)
 
     if self:has_key("tiersSelected") and options.symbols.cast ~= nil and options.symbols.cast:has_key("tokenToTier") then
@@ -3736,6 +3783,20 @@ function ActivatedAbilityBehavior:ApplyToTargets(ability, casterToken, targets, 
 				end
 			end
 		end
+    elseif self.applyto == 'attackable_objects' then
+        --Gathers every attackable object token within range of the caster and
+        --applies the ability's targetFilter and reasonedFilters formulas to each.
+        --The engine's own area sweep for burst abilities never includes object
+        --tokens, so "each object in the area" abilities (e.g. Ghost's Paranormal
+        --Activity) put this applyto on their behaviors instead of relying on
+        --area targeting. Optional behavior fields:
+        --  applyRadius: number overriding the ability's range (e.g. a cleanup
+        --    behavior that must still reach objects a slide moved out of range).
+        --  applyFilterOverride: GoblinScript evaluated against each object,
+        --    used INSTEAD of the ability's filters when set.
+        result = ability:GatherAttackableObjects(casterToken,
+            tonumber(self:try_get("applyRadius", "")),
+            self:try_get("applyFilterOverride", ""))
 	elseif GameSystem.ApplyToTargetsByID[self.applyto] ~= nil then
 
 		--these are custom roll groups. When calling RegisterRollType in the GameSystem we define applyto in the outcomes
@@ -3970,6 +4031,9 @@ function ActivatedAbilityBehavior:DescribeRoll(casterCreature, ability, options)
 	return dmhub.EvalGoblinScript(self.roll, casterCreature:LookupSymbol((options or {}).symbols), "Ability or spell roll")
 end
 
+--optional message posted to the chat/action log when this behavior heals a nonzero amount.
+ActivatedAbilityHealBehavior.chatMessage = ""
+
 function ActivatedAbilityHealBehavior:Cast(ability, casterToken, targets, options)
 
     --filter out any targets that cannot heal.
@@ -4029,6 +4093,7 @@ function ActivatedAbilityHealBehavior:Cast(ability, casterToken, targets, option
 			finished = true
             ability:CommitToPaying(casterToken, options)
 			options.symbols.cast.healroll = rollInfo.total
+			local totalHealed = 0
 			for i,target in ipairs(targets) do
 				local targetCreature = target.token.properties
 				for catName,value in pairs(rollInfo.categories) do
@@ -4049,6 +4114,7 @@ function ActivatedAbilityHealBehavior:Cast(ability, casterToken, targets, option
 					}
 
 					options.symbols.cast.healing = options.symbols.cast.healing + healAmount
+					totalHealed = totalHealed + healAmount
 
 					local overheal = math.max(0, healAmount - damageBefore)
 					local healParams = {
@@ -4076,6 +4142,25 @@ function ActivatedAbilityHealBehavior:Cast(ability, casterToken, targets, option
 						healParams.overheal = overheal
 					end
 					track("healing_done", healParams)
+				end
+			end
+
+			--optional chat note, only when we actually healed something.
+			--<<total>> in the message is replaced with the total stamina actually regained.
+			if totalHealed > 0 and self:try_get("chatMessage", "") ~= "" then
+				local msg = string.gsub(self.chatMessage, "<<total>>", tostring(totalHealed))
+				--Post an action-log card showing the healed creature and amount.
+				--tokenMessages on the cast card only render as hover tooltips (and
+				--not at all for the caster), so this is the visible record.
+				chat.SendCustom(HealChatMessage.new{
+					tokenid = targets[1].token.charid,
+					amount = totalHealed,
+					text = msg,
+				})
+				--Also surface the note on the cast's action-log card (no-op when the
+				--cast has no card, e.g. Hidden helper abilities).
+				for _,target in ipairs(targets) do
+					ability.RecordTokenMessage(target.token, options, msg)
 				end
 			end
 

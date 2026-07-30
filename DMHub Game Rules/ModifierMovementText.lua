@@ -57,9 +57,57 @@ CharacterModifier.TypeInfo.movementtext = {
             return text
         end
 
+        -- Optional path-proximity gating: only surface the advisory when the movement
+        -- path comes within `proximityDistance` tiles of the creature resolved by
+        -- `proximityFormula` (e.g. AurasCaster("Lockdown") -> the Bruxer). This lets a
+        -- wide aura warn about shifting PAST the source even when the mover starts out
+        -- of range. When set, the resolved source's display name is substituted for
+        -- the literal %SOURCE% in the advisory text.
+        local sourceName = nil
+        local proxFormula = modifier:try_get("proximityFormula", "")
+        if proxFormula ~= "" then
+            local refToken = nil
+            pcall(function()
+                local resolved = dmhub.EvalGoblinScriptToObject(proxFormula, creature:LookupSymbol(), "Movement advisory proximity")
+                if type(resolved) == "table" then
+                    local tid = dmhub.LookupTokenId(resolved)
+                    if tid ~= nil and tid ~= "" then
+                        refToken = dmhub.GetTokenById(tid)
+                    end
+                end
+            end)
+
+            if refToken == nil or (not refToken.valid) then
+                return text
+            end
+
+            local proxDist = tonumber(modifier:try_get("proximityDistance", 1)) or 1
+            local within = false
+            local steps = nil
+            pcall(function() steps = path.steps end)
+            if steps ~= nil then
+                for _, step in ipairs(steps) do
+                    if refToken:Distance(step) <= proxDist then
+                        within = true
+                        break
+                    end
+                end
+            end
+
+            if not within then
+                return text
+            end
+
+            sourceName = refToken.name
+        end
+
         local s = StringInterpolateGoblinScript(modifier.text, creature:LookupSymbol{
             path = PathMoved.new{path = path},
         })
+
+        if sourceName ~= nil then
+            s = string.gsub(s, "%%SOURCE%%", sourceName)
+        end
 
         if text ~= "" then
             text = text .. "\n\n"

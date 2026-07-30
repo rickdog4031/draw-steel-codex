@@ -621,6 +621,9 @@ CharacterModifier.TypeInfo.power = {
 
     buffOrDebuff = function(self, context)
         local modType = ActivatedAbilityPowerRollBehavior.s_modificationTypesById[self.modtype]
+        if modType == nil then
+            return nil
+        end
         local buffOrDebuff = modType.value
         if tonumber(buffOrDebuff) then
             if buffOrDebuff > 0 then
@@ -640,7 +643,7 @@ CharacterModifier.TypeInfo.power = {
                 description = modType.text
             end
 
-            local buffOrDebuff = modType.value
+            local buffOrDebuff = modType ~= nil and modType.value or nil
 
             --generate a good set of symbols to do any goblin scripts on.
             local token = nil

@@ -3648,6 +3648,7 @@ end
 
 ActivatedAbilityDamageBehavior.titleText = ""
 ActivatedAbilityDamageBehavior.chatMessage = ""
+ActivatedAbilityDamageBehavior.instances = "1"
 
 function ActivatedAbilityDamageBehavior:EditorItems(parentPanel)
 	local result = {}
@@ -3693,6 +3694,23 @@ function ActivatedAbilityDamageBehavior:EditorItems(parentPanel)
 	self:RollEditor(parentPanel, result)
 	self:DamageTypeEditor(parentPanel, result)
 
+    result[#result+1] = gui.Panel{
+        classes = {"formPanel"},
+        gui.Label{
+            classes = {"formLabel"},
+            text = "Instances:",
+        },
+        gui.Input{
+            classes = {"formInput"},
+            text = self.instances,
+            events = {
+                change = function(element)
+                    self.instances = element.text
+                end
+            }
+        },
+    }
+
     result[#result+1] = gui.Check{
         text = "Cannot be Reduced",
         value = self:try_get("cannotBeReduced", false),
@@ -3710,6 +3728,32 @@ function ActivatedAbilityDamageBehavior:EditorItems(parentPanel)
     }
 
 	self:SeparateRollsEditor(parentPanel, result)
+	return result
+end
+
+function ActivatedAbilityHealBehavior:EditorItems(parentPanel)
+	local result = {}
+	self:ApplyToEditor(parentPanel, result)
+	self:FilterEditor(parentPanel, result)
+
+    result[#result+1] = gui.Panel{
+        classes = {"formPanel"},
+        gui.Label{
+            classes = {"formLabel"},
+            text = "Log Message:",
+        },
+        gui.Input{
+            classes = {"formInput"},
+            text = self:try_get("chatMessage", ""),
+            events = {
+                change = function(element)
+                    self.chatMessage = element.text
+                end
+            }
+        },
+    }
+
+	self:RollEditor(parentPanel, result)
 	return result
 end
 

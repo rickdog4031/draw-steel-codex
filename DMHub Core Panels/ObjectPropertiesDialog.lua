@@ -3573,6 +3573,39 @@ local m_objectsScheduledToShow = nil
 
 --called by DMHub when the selected objects change.
 dmhub.ObjectsSelected = function(objects)
+	--A click on an object token that is currently wired as an ability target
+	--is a target choice, not a request to inspect the object. The engine
+	--routes object clicks to object selection instead of dispatching
+	--tokenClick to the token sheet, so translate here: find the token whose
+	--objectInstance matches the selected object and execute its pending
+	--targetInfo (the same contract TokenUI's tokenClick uses), instead of
+	--opening the object editor.
+	for _,obj in ipairs(objects or {}) do
+		local objValid, objid, floorid = false, nil, nil
+		pcall(function()
+			objValid = obj.valid
+			objid = obj.objid
+			floorid = obj.floorid
+		end)
+		if objValid and objid ~= nil then
+			for _,tok in ipairs(dmhub.allTokensIncludingObjects) do
+				if tok.valid and tok.isObject and tok.sheet ~= nil and tok.sheet.data.targetInfo ~= nil then
+					local inst = tok.objectInstance
+					local match = false
+					pcall(function()
+						match = inst ~= nil and inst.objid == objid and inst.floorid == floorid
+					end)
+					if match then
+						local info = tok.sheet.data.targetInfo
+						dmhub.ClearSelectedObjects()
+						info.execute(tok, {})
+						return
+					end
+				end
+			end
+		end
+	end
+
 	m_objectsScheduledToShow = objects
 
 	--schedule this to make sure it happens early in the frame.

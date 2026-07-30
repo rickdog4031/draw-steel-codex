@@ -472,8 +472,24 @@ function ActivatedAbilityAttackBehavior:Cast(ability, casterToken, targets, opti
 			completed = true
 			attackHit = hit
 			if attackHit then
-				options.symbols.cast.damagedealt = options.symbols.cast.damagedealt + completeAttackOptions.damageDealt
-				options.symbols.cast.damageraw = options.symbols.cast.damageraw + completeAttackOptions.damageRaw
+				--An ENEMY's reactive attack can run with this cast's symbols ambient
+				--(trigger dispatch forwards them, e.g. an opportunity attack made
+				--against a charging creature), and must not credit its damage to the
+				--victim's own cast -- it inflated "regains Stamina equal to the damage
+				--dealt" heals. Attacks by the cast's owner or its allies (squad
+				--minions, delegated free strikes) still accumulate.
+				local accumulateDamage = true
+				local castOwnerId = options.symbols.cast:try_get("casterid")
+				if castOwnerId ~= nil and castOwnerId ~= casterToken.id then
+					local ownerToken = dmhub.GetTokenById(castOwnerId)
+					if ownerToken ~= nil and ownerToken.valid and not casterToken:IsFriend(ownerToken) then
+						accumulateDamage = false
+					end
+				end
+				if accumulateDamage then
+					options.symbols.cast.damagedealt = options.symbols.cast.damagedealt + completeAttackOptions.damageDealt
+					options.symbols.cast.damageraw = options.symbols.cast.damageraw + completeAttackOptions.damageRaw
+				end
 
 				for _,targetToken in ipairs(targetTokens) do
 					self:RecordHitTarget(targetToken, options)

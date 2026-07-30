@@ -319,6 +319,15 @@ TokenHud.RegisterPanel{
                 if token.properties.minion and token.properties:has_key("_tmp_minionSquad") then
                     local squad = token.properties._tmp_minionSquad
                     local death = (not squad.damage_time_pending) and squad.damage_taken >= squad.health_single
+
+                    --Traits like Group Appetite: minions never die to ordinary band
+                    --damage, and their real deaths (acid/fire pool-zeroing, ending
+                    --their turn at 0) are fully automated by triggers - never offer
+                    --the manual death-confirmation skull, it reads to players as a
+                    --death being owed.
+                    if death and (token.properties:CalculateNamedCustomAttribute("Gated Minion Deaths") or 0) > 0 then
+                        death = false
+                    end
                     local death_overflows = squad.damage_taken >= (squad.num_recently_damaged+1) * squad.health_single
                     local is_direct_target = token.properties.minionDamageTime == squad.damage_time
                     local has_direct_targets = squad.num_recently_damaged > 0
@@ -358,8 +367,29 @@ TokenHud.RegisterPanel{
                                         })
                                     end
 
+                                    --The damage type of the hit that emptied this minion's
+                                    --stamina band, for "dies to fire/acid" style death traits.
+                                    --Prefer this token's own record (it was a direct target);
+                                    --band overflow kills minions that were never hit directly,
+                                    --so fall back to the squad's most recent direct target's
+                                    --record. _tmp_ records are client-local, so a death
+                                    --confirmed on a different client than the damage falls
+                                    --through to "none".
+                                    local damagetype = token.properties:try_get("_tmp_lastdamagetype")
+                                    if damagetype == nil then
+                                        local squadInfo = token.properties:try_get("_tmp_minionSquad")
+                                        if squadInfo ~= nil then
+                                            for _,squadTok in ipairs(squadInfo.tokens or {}) do
+                                                if squadTok.valid and squadTok.properties.minionDamageTime == squadInfo.damage_time then
+                                                    damagetype = squadTok.properties:try_get("_tmp_lastdamagetype")
+                                                    break
+                                                end
+                                            end
+                                        end
+                                    end
+
                                     token.properties:TriggerEvent("creaturedeath", {hasattacker = attacker ~= nil,
-                                            attacker = attacker,})
+                                            attacker = attacker, damagetype = damagetype or "none",})
                                     token.properties:MinionDeath()
                                 end,
 

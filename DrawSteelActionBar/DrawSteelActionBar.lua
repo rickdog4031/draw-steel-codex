@@ -2663,6 +2663,74 @@ local function RemoveLineOfSightRaysTargetingToken(tokenid)
     end
 end
 
+--Hide-attempt vision arrows: while an ability flagged with hideAttempt (the
+--Hide maneuver) is being targeted, we draw a sight arrow from the caster to
+--every living enemy on the map, labeled with whatever obscures that enemy's
+--view of the caster. The labels only inform the table -- whether the hide
+--succeeds is adjudicated by the players, so no label ever blocks the cast.
+local m_hideVisionRays = {}
+
+local function FreeHideVisionRays()
+    for _, ray in ipairs(m_hideVisionRays) do
+        ray:DestroyLineOfSight()
+    end
+
+    m_hideVisionRays = {}
+end
+
+local function CreateHideVisionRays(casterToken)
+    FreeHideVisionRays()
+
+    if casterToken == nil or (not casterToken.valid) or casterToken.properties == nil then
+        return
+    end
+
+    --Concealment is a property of the hider's location/state (e.g. darkness,
+    --invisibility), so it reads the same on every arrow.
+    local concealed = casterToken.hasConcealment or casterToken.properties:try_get("_tmp_concealed", false)
+
+    for _, enemyToken in ipairs(dmhub.allTokens) do
+        if enemyToken.charid ~= casterToken.charid and enemyToken.valid and enemyToken.properties ~= nil
+            and (not casterToken:IsFriend(enemyToken)) and (not enemyToken.properties:IsDead()) then
+
+            local ray = dmhub.MarkLineOfSight(casterToken, enemyToken, casterToken.properties:GetPierceWalls(), "red")
+            if ray ~= nil then
+                local enemyPierce = enemyToken.properties:GetPierceWalls()
+                local obscured = false
+
+                if enemyToken:GetLineOfSight(casterToken, enemyPierce) == 0 then
+                    ray:AddLabel("Blocked Vision", "buff")
+                    obscured = true
+                else
+                    local coverInfo = dmhub.GetCoverInfo(enemyToken, casterToken, enemyPierce)
+                    if coverInfo ~= nil and coverInfo.cover >= 1 then
+                        --cover levels: 1 = half, 2 = three quarters, 3+ = full.
+                        local label = "Cover"
+                        if coverInfo.cover == 1 then
+                            label = "Cover 50%"
+                        elseif coverInfo.cover == 2 then
+                            label = "Cover 75%"
+                        end
+                        ray:AddLabel(label, "buff")
+                        obscured = true
+                    end
+                end
+
+                if concealed then
+                    ray:AddLabel("Concealment", "buff")
+                    obscured = true
+                end
+
+                if not obscured then
+                    ray:AddLabel("Clear View", "debuff")
+                end
+
+                m_hideVisionRays[#m_hideVisionRays + 1] = ray
+            end
+        end
+    end
+end
+
 --objects to mark line of sight.
 
 --- @type nil|LuaTargetingMarkers
@@ -3200,6 +3268,14 @@ local g_skipButton
 local g_castMessage
 local g_castMessageContainer
 local g_tokenSelectionContainer
+
+--The live "choose a target" chooser panel from the chooseTarget event, if any.
+--Tracked so cancelCasting can destroy it: the chooser's destroy handler fires the
+--behavior's cancel() callback, which unblocks the cast coroutine waiting on the
+--choice (e.g. MCDMAbilityBehavior's promptWhenResolving loop). Without this, a
+--Skip/cancel while a chooser is up leaves that coroutine yielding forever and the
+--whole cast chain (invoked ability -> invoke behavior -> parent cast) hangs.
+local g_activeTargetChooser = nil
 
 local g_castModesPanel
 local g_forcedMovementTypePanel
@@ -4182,7 +4258,11 @@ CreateAbilityController = function()
 
                             if g_currentAbility ~= nil and (g_currentAbility.targetType == "emptyspace" or g_currentAbility.targetType == "anyspace") then
                                 local movementType = g_currentAbility:GetMovementType(g_token, g_currentSymbols)
-                                local shifting = (movementType == "shift")
+                                --Straight-line shifts (targeting straightpath, e.g. Crash Through) must use
+                                --the emptyspace destination-targeting flow so the straight line is enforced;
+                                --the free-walk shift controller cannot constrain the path.
+                                local targeting = g_currentAbility.targeting
+                                local shifting = (movementType == "shift") and targeting ~= "straightline" and targeting ~= "straightpath" and targeting ~= "straightpathignorecreatures"
                                 if shifting then
                                     m_shiftController:FireEventTree("beginCasting")
                                     m_shiftController:SetClass("collapsed", false)
@@ -4648,6 +4728,38 @@ CreateAbilityController = function()
             g_currentAbility = ability
             g_targetsChosen = {}
             g_manualTargetChosen = false
+
+            --Abilities whose behaviors gather attackable objects (applyto =
+            --attackable_objects, e.g. Ghost's Paranormal Activity) have no
+            --engine-side targeting, so mark the objects they will affect as
+            --targets while the cast is being confirmed. Cleared through
+            --g_castingDestructors on cast or cancel.
+            do
+                local gathersObjects = false
+                for _,b in ipairs(ability:try_get("behaviors", {})) do
+                    if b:try_get("applyto", "") == "attackable_objects" then
+                        gathersObjects = true
+                        break
+                    end
+                end
+                if gathersObjects then
+                    local markedObjects = {}
+                    for _,t in ipairs(ability:GatherAttackableObjects(g_token)) do
+                        local tok = t.token
+                        if tok.valid and tok.sheet ~= nil then
+                            tok.sheet:FireEvent("target", {})
+                            markedObjects[#markedObjects+1] = tok
+                        end
+                    end
+                    g_castingDestructors[#g_castingDestructors+1] = function()
+                        for _,tok in ipairs(markedObjects) do
+                            if tok.valid and tok.sheet ~= nil then
+                                tok.sheet:FireEvent("untarget")
+                            end
+                        end
+                    end
+                end
+            end
             g_firstTarget = nil
 
             --transfer any packaged targets over. Token targets go in g_targetsChosen;
@@ -4795,7 +4907,11 @@ CreateAbilityController = function()
 
             if g_currentAbility ~= nil and (g_currentAbility.targetType == "emptyspace" or g_currentAbility.targetType == "anyspace") then
                 local movementType = g_currentAbility:GetMovementType(g_token, g_currentSymbols)
-                local shifting = (movementType == "shift")
+                --Straight-line shifts (targeting straightpath, e.g. Crash Through) must use
+                --the emptyspace destination-targeting flow so the straight line is enforced;
+                --the free-walk shift controller cannot constrain the path.
+                local targeting = g_currentAbility.targeting
+                local shifting = (movementType == "shift") and targeting ~= "straightline" and targeting ~= "straightpath" and targeting ~= "straightpathignorecreatures"
                 if shifting then
                     m_shiftController:FireEventTree("beginCasting")
                     m_shiftController:SetClass("collapsed", false)
@@ -4884,6 +5000,18 @@ CreateAbilityController = function()
         end,
 
         cancelCasting = function(element)
+            --Tear down any live target chooser FIRST: its destroy handler fires the
+            --behavior's cancel() callback, releasing the cast coroutine blocked on
+            --the choice. Skipping this leaves the coroutine yielding forever and
+            --the invoke/parent-cast chain permanently stuck.
+            if g_activeTargetChooser ~= nil then
+                local chooser = g_activeTargetChooser
+                g_activeTargetChooser = nil
+                if chooser.valid then
+                    chooser:DestroySelf()
+                end
+            end
+
             ClearCastingTriggers()
 
             ClearCastingDurationEffects()
@@ -4940,6 +5068,7 @@ CreateAbilityController = function()
             g_currentAbility = nil
             g_currentSymbols = {}
             FreeTargetLineOfSightRays()
+            FreeHideVisionRays()
             element.mapfocus = false
             element.captureEscape = false
 
@@ -5033,7 +5162,10 @@ CreateAbilityController = function()
                 defocus = function(element)
                     element:DestroySelf()
                 end,
-                destroy = function()
+                destroy = function(element)
+                    if g_activeTargetChooser == element then
+                        g_activeTargetChooser = nil
+                    end
                     if g_castMessage ~= nil then
                         g_castMessage.data.promptText = ''
                         g_castMessage:FireEvent("refresh")
@@ -5087,6 +5219,7 @@ CreateAbilityController = function()
                 end
             end
 
+            g_activeTargetChooser = targetChooser
             g_actionBar:AddChild(targetChooser)
             gui.SetFocus(targetChooser)
         end,
@@ -5121,8 +5254,25 @@ CreateAbilityController = function()
             --instantCast means the invoke already resolved its targets (AI prompt
             --handler or scripted resolution): cast as soon as targeting is satisfied
             --instead of waiting for a manual press of the cast button.
+            --Exception: an invoke that arrives with token targets already packaged
+            --AND a prompt question attached (promptText -> promptOverride) has no
+            --further input to collect, so instant-casting would fire it with ZERO
+            --player interaction -- the prompt text is never seen and any resource
+            --cost (e.g. "2 Malice: ...") is spent silently. Require the confirm
+            --press for those. Destination-style invokes (no packaged token targets)
+            --keep instant cast: their remaining input is the destination pick, and
+            --the prompt shows as instructions during it.
             if options.instantCast then
-                ability.castImmediately = true
+                local packagedTokenTargets = false
+                for _, target in ipairs(options.targets or {}) do
+                    if target.token ~= nil then
+                        packagedTokenTargets = true
+                        break
+                    end
+                end
+                if not (packagedTokenTargets and ability:try_get("promptOverride") ~= nil) then
+                    ability.castImmediately = true
+                end
             end
             CharacterPanel.DisplayAbility(casterToken, ability)
             CharacterPanel.HighlightAbilitySection{
@@ -5647,6 +5797,13 @@ CreateAbilityController = function()
                                 end
                             end
 
+                            --forced movement built from a "without damage" rule (e.g. the
+                            --Shambling Mound's Engulf pull) deals no collision damage at
+                            --all, so never promise any in the preview.
+                            if g_currentAbility:try_get("noCollisionDamage", false) then
+                                suppressDamage = true
+                            end
+
                             local textLabels = {}
                             if not suppressDamage then
                                 textLabels[#textLabels + 1] = {
@@ -5815,8 +5972,11 @@ CreateAbilityController = function()
                             end
                         end
 
-                        --show damage indicators on creatures passed through.
-                        if throughCreatures and path.steps ~= nil then
+                        --show damage indicators on creatures passed through. Forced
+                        --movement built from a "without damage" rule (e.g. Engulf's
+                        --pull into the mound's own space) deals no pass-through
+                        --damage, so promise none.
+                        if throughCreatures and path.steps ~= nil and (not g_currentAbility:try_get("noCollisionDamage", false)) then
                             local throughTextLabels = {}
                             local throughShapes = {}
                             local hitIds = {}
@@ -6079,6 +6239,32 @@ CreateAbilityController = function()
 
             local selfTarget = g_currentAbility.selfTarget
             local targetTokens = dmhub.tokenInfo.TokensInShape(g_pointTargeting.shape)
+
+            --Tokens hidden from this client (invisibleToPlayers, e.g. monsters
+            --with the Hidden condition) have no view in the SheetHud, so
+            --TokensInShape cannot find them -- but Area abilities still affect
+            --hidden creatures. Sweep the raw token list for any such token
+            --occupying the shape and add it silently: with no sheet it gets no
+            --target ring or other placement UI, so the caster is not shown
+            --that anyone is there. TargetPassesFilter below still decides
+            --whether the ability may actually affect it.
+            --NOTE: this only helps clients that HAVE the hidden token in their
+            --token list (the director; and player clients if the engine ever
+            --syncs invisible tokens to them in a concealed form). As of now the
+            --engine strips invisibleToPlayers tokens from player clients
+            --entirely, so a player-cast area cannot include a hidden monster
+            --client-side; that case needs director-side resolution.
+            if g_pointTargeting.shape ~= nil then
+                local seen = {}
+                for _, tok in pairs(targetTokens) do
+                    seen[tok.charid] = true
+                end
+                for _, tok in ipairs(dmhub.allTokens) do
+                    if tok.invisibleToPlayers and (not seen[tok.charid]) and g_pointTargeting.shape:ContainsToken(tok) then
+                        targetTokens[tok.charid] = tok
+                    end
+                end
+            end
 
             -- Partner burst: union tokens from the partner shape into the target dict.
             -- Same-key entries dedupe automatically -- "An enemy in both areas is
@@ -7166,6 +7352,13 @@ CalculateSpellTargeting = function(forceCast, initialSetup)
             g_castMessage.data.promptText = promptText
             g_castMessage:FireEvent("refresh")
 
+            --Hide attempt: show every enemy's sightline to the caster while the
+            --player decides whether to commit the hide. Created once per cast;
+            --torn down in cancelCasting.
+            if g_currentAbility:try_get("hideAttempt", false) and #m_hideVisionRays == 0 then
+                CreateHideVisionRays(g_token)
+            end
+
             g_castModesPanel:FireEvent("refreshModes")
             g_forcedMovementTypePanel:FireEvent("refreshForcedMovement")
 
@@ -7176,6 +7369,36 @@ CalculateSpellTargeting = function(forceCast, initialSetup)
             g_range = range
 
             g_potentialTargetTokens = CalculateSpellTargetFocusing(g_currentSymbols)
+
+            --Auto-select dictated targets: an invoked ability that arrives with
+            --customTargetFilters (e.g. "Free Strike Against Specific Target") has
+            --its legal targets pinned by the invoker. When the valid targets
+            --exactly fill the ability's target count, the player has no real
+            --choice left to make, so select them automatically. The recursive
+            --call then completes the cast, or shows the Confirm UI with the
+            --targets pre-selected for abilities with a promptOverride.
+            if g_currentAbility.targetType == "target" and #g_targetsChosen == 0
+                    and #(g_currentAbility:try_get("customTargetFilters", {})) > 0 then
+                local maxTargets = g_currentAbility:GetNumTargets(g_token, g_currentSymbols)
+                if type(maxTargets) == "number" and maxTargets >= 1 then
+                    local validTargets = {}
+                    for _, tok in ipairs(g_potentialTargetTokens) do
+                        if tok.valid and tok.sheet ~= nil and tok.sheet.data.targetValid then
+                            validTargets[#validTargets + 1] = tok
+                        end
+                    end
+                    if #validTargets == maxTargets then
+                        for _, tok in ipairs(validTargets) do
+                            g_targetsChosen[#g_targetsChosen + 1] = tok.id
+                        end
+                        if g_firstTarget == nil then
+                            g_firstTarget = g_targetsChosen[1]
+                        end
+                        CalculateSpellTargeting()
+                        return
+                    end
+                end
+            end
 
             --refresh the radius marker.
             if g_currentAbility.targetType == "line" then

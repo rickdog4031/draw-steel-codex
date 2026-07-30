@@ -223,6 +223,14 @@ TriggeredAbility.triggers = {
 	{
 		id = "regainhitpoints",
 		text = "Regain Stamina",
+        symbols = {
+			healed = {
+				name = "Healed",
+				type = "number",
+				desc = "The amount of Stamina regained when triggering this event.",
+				prose = "the stamina regained",
+			},
+        },
 	},
 	{
 		id = "losehitpoints",

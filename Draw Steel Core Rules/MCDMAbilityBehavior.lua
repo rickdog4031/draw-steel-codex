@@ -92,6 +92,39 @@ function ActivatedAbilityDrawSteelCommandBehavior:Cast(ability, casterToken, tar
 
         for _,target in ipairs(targets) do
             if target.token ~= nil then
+                --Optional targeting aid (highlightNearestEnemies = N squares): as each
+                --target resolves, pulse-highlight the caster's living enemies that are
+                --nearest to that target, considering only enemies within N squares of it.
+                --All enemies tied for nearest pulse together; farther enemies do not.
+                --Used by abilities that direct movement "toward the nearest enemy"
+                --(e.g. Ghost's Paranormal Activity) so the director can see the
+                --intended destination before placing the movement.
+                local highlightRange = tonumber(self:try_get("highlightNearestEnemies", 0)) or 0
+                if highlightRange > 0 and target.token.valid then
+                    local best = nil
+                    local nearest = {}
+                    for _,tok in ipairs(dmhub.GetTokens{}) do
+                        if tok.valid and tok.properties ~= nil and tok.charid ~= casterToken.charid and (not casterToken:IsFriend(tok)) then
+                            local dead = false
+                            pcall(function() dead = tok.properties:IsDead() end)
+                            if not dead then
+                                local d = target.token:Distance(tok)
+                                if d <= highlightRange then
+                                    if best == nil or d < best then
+                                        best = d
+                                        nearest = {tok}
+                                    elseif d == best then
+                                        nearest[#nearest+1] = tok
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    for _,tok in ipairs(nearest) do
+                        dmhub.PulseHighlightToken(tok.id)
+                    end
+                end
+
                 -- Expose Cast (with its memory), Target, Mode, etc. to GoblinScript
                 -- in the rule string so authors can write damage formulas like
                 -- {Min(1, Cast.Spaces Moved) * Might} damage or reference
@@ -427,7 +460,7 @@ local g_rulePatterns = {
     },
 
     {
-        pattern = "^(?<vertical>vertical )?(?<movement>pull|push|slide) +(?<straightup>straight up +)?(?<distance>[0-9]+)(?<ignorestabilityifcompanion>[,;]? ignoring stability if (your )?companion is adjacent( to the target)?)?(?<ignorestability>[,;]? (ignoring stability|this (push|pull|slide) ignores the target.s stability))?",
+        pattern = "^(?<vertical>vertical )?(?<movement>pull|push|slide) +(?<straightup>straight up +)?(?<distance>[0-9]+)(?<ignorestabilityifcompanion>[,;]? ignoring stability if (your )?companion is adjacent( to the target)?)?(?<ignorestability>[,;]? (ignoring stability|this (push|pull|slide) ignores the target.s stability))?(?<nodamage>[,;]? without damage)?(?<intospace>[,;]? into (your|their|the creature.s) space)?",
         execute = function(behavior, ability, casterToken, targetToken, options, match)
 
             print("INVOKE:: EXECUTE FORCE MOVE", match.movement, match.distance)
@@ -450,21 +483,34 @@ local g_rulePatterns = {
                 end
             end
 
-            local targetImmune = targetToken.properties:CalculateNamedCustomAttribute("Cannot Be Force Moved")
-            if targetImmune > 0 then
-                print("Target is immune to forced movement, not executing")
-                ShowFailMessage("Immune to Forced Movement")
+            --A creature force-moving a target IT has grabbed overrides forced
+            --movement immunity: the grab itself (and conditions riding on it, e.g.
+            --the Shambling Mound engulfing a grabbed victim) grants "Cannot Be
+            --Force Moved", which would otherwise block the grabber from dragging
+            --their own captive.
+            local grabbedByCaster = false
+            local targetGrabbed = nil
+            local grabbedCondition = CharacterCondition.conditionsByName["grabbed"]
+            if grabbedCondition ~= nil then
+                targetGrabbed = targetToken.properties:HasCondition(grabbedCondition.id)
+                grabbedByCaster = (targetGrabbed == casterToken.charid)
+            end
+
+            --Check the grabbed-by-another case FIRST: a grabbed target usually also
+            --has "Cannot Be Force Moved" granted by the grab itself, so testing the
+            --generic immunity first would mask the more specific (and actionable)
+            --reason -- the director should see that the grab is what blocks the move.
+            if targetGrabbed and targetGrabbed ~= casterToken.charid then
+                print("Target is grabbed, and cannot be force moved.")
+                ShowFailMessage("Grabbed: Cannot be Force Moved")
                 return
             end
 
-            local grabbedCondition = CharacterCondition.conditionsByName["grabbed"]
-            if grabbedCondition ~= nil then
-                local targetGrabbed = targetToken.properties:HasCondition(grabbedCondition.id)
-                if targetGrabbed and targetGrabbed ~= casterToken.charid then
-                    print("Target is grabbed, and cannot be force moved.")
-                    ShowFailMessage("Grabbed: Cannot be Force Moved")
-                    return
-                end
+            local targetImmune = targetToken.properties:CalculateNamedCustomAttribute("Cannot Be Force Moved")
+            if targetImmune > 0 and (not grabbedByCaster) then
+                print("Target is immune to forced movement, not executing")
+                ShowFailMessage("Immune to Forced Movement")
+                return
             end
 
 
@@ -555,7 +601,9 @@ local g_rulePatterns = {
             -- forced movement resolved vertically. Reuse the existing vertical
             -- pathway by selecting the "Vertical" standard-ability variant.
             local convertToVertical = false
-            if not match.vertical then
+            --"into your space" pulls have a fixed horizontal destination inside the
+            --caster's footprint, so never convert them to vertical movement.
+            if (not match.vertical) and (not match.intospace) then
                 if targetToken.properties:IsFlying() then
                     convertToVertical = true
                 else
@@ -603,11 +651,34 @@ local g_rulePatterns = {
                 disableSquadCoordination = true,
             }
 
+            --"pull 6, without damage" variant: the movement plays normally but no
+            --collision damage or collide triggers fire for anyone involved (e.g.
+            --the Shambling Mound dragging an engulfed creature into its sack).
+            if match.nodamage then
+                abilityAttr.noCollisionDamage = true
+            end
+
+            --"pull 6 ... into your space" variant (e.g. Engulf): the destination is
+            --computed -- the nearest square of the caster's own footprint -- rather
+            --than chosen by the director, so the pull resolves as a single confirm.
+            --Dragging a creature inside the caster's space requires moving through
+            --the caster's occupied squares and can never deal collision damage.
+            if match.intospace then
+                abilityAttr.forcedMovementThroughCreatures = true
+                abilityAttr.noCollisionDamage = true
+                --The relocate clamps any chosen destination to the puller's own
+                --footprint (see ActivatedAbilityRelocateCreatureBehavior:Cast).
+                abilityAttr.pullIntoSpaceOfCharid = casterToken.charid
+                local casterName = creature.GetTokenDescription(casterToken)
+                local targetName = creature.GetTokenDescription(targetToken)
+                abilityAttr.promptOverride = string.format("Pull %s into %s's space", targetName, casterName)
+            end
+
             if stability > 0 then
                 adjustments[#adjustments+1] = string.format("Stability: -%d", stability)
             end
 
-            if #adjustments > 0 then
+            if #adjustments > 0 and (not match.intospace) then
                 abilityAttr.promptOverride = abilityAttr.promptOverride .. " (" .. table.concat(adjustments, ", ") .. ")"
             end
 
@@ -627,8 +698,13 @@ local g_rulePatterns = {
                             loc = targetToken.loc:WithAltitude(targetToken.loc.altitude + range),
                         }
                     }
+                elseif match.intospace then
+                    local chosen = MCDMUtils.NearestFootprintLoc(casterToken, targetToken)
+                    if chosen ~= nil then
+                        options.targetArgs = { { loc = chosen } }
+                    end
                 end
-                
+
                 InvokeAbility(ability, abilityClone, targetToken, casterToken, options)
                 options.targetArgs = nil
             end
@@ -3063,6 +3139,28 @@ function ActivatedAbilityRelocateCreatureBehavior:Cast(ability, casterToken, tar
     --Deliberately NOT `ability.forcedMovement`, which "Forced Movement: Slide" never declares.
     local isForcedMove = movementType == "move" and (ability.targeting == "straightline" or ability.targetType == "line")
 
+    --"into your space" pulls (e.g. the Shambling Mound's Engulf): the pull
+    --always ends in the puller's own footprint -- clicking beyond the puller
+    --must not drag the target past it, the same way a wall would stop the
+    --movement. A click on a specific square INSIDE the footprint is honored
+    --as-is so the director controls where in the space the captive ends up.
+    local intoCharid = ability:try_get("pullIntoSpaceOfCharid")
+    if intoCharid ~= nil and casterToken ~= nil and casterToken.valid then
+        local ownerTok = dmhub.GetTokenById(intoCharid)
+        if ownerTok ~= nil and ownerTok.valid then
+            local chosenLoc = nil
+            if targets ~= nil and targets[1] ~= nil then
+                chosenLoc = targets[1].loc
+            end
+            if not MCDMUtils.IsLocInsideFootprint(ownerTok, chosenLoc) then
+                local dest = MCDMUtils.NearestFootprintLoc(ownerTok, casterToken)
+                if dest ~= nil then
+                    targets = { { loc = dest } }
+                end
+            end
+        end
+    end
+
     g_baseRelocateCreatureCast(self, ability, casterToken, targets, options)
 
     --Record WHERE a forced move dropped the creature. The Void Portal's onenter aura trigger
@@ -3133,4 +3231,152 @@ function ActivatedAbilityRelocateCreatureBehavior:Cast(ability, casterToken, tar
     if pusherToken ~= nil and pusherToken.charid ~= casterToken.charid and (not pusherToken:IsFriend(casterToken)) then
         LiveEncounter.TrackHeroStats(pusherToken.charid, "forcedMovementDealt", spaces)
     end
+end
+
+--- @class ActivatedAbilityRepositionIntoEngulferBehavior:ActivatedAbilityBehavior
+--- Snaps the casting creature back inside the footprint of the creature whose
+--- ongoing effect (e.g. the Shambling Mound's Engulfed) it carries. Designed to
+--- ride a mandatory, silent "move" trigger on the effect itself: the engine's
+--- grab-follow drags a captive along when its grabber moves but places it
+--- ADJACENT to the grabber; this behavior then teleports the captive to the
+--- nearest free square of the grabber's own space, keeping "the engulfed
+--- creature occupies the mound's space" true. No-op when the captive is
+--- already inside, when the engulfer is dead or gone, or when the effect is
+--- not present.
+ActivatedAbilityRepositionIntoEngulferBehavior = RegisterGameType("ActivatedAbilityRepositionIntoEngulferBehavior", "ActivatedAbilityBehavior")
+
+ActivatedAbilityRepositionIntoEngulferBehavior.summary = 'Reposition Into Engulfer Space'
+ActivatedAbilityRepositionIntoEngulferBehavior.ongoingEffectid = "none"
+
+ActivatedAbility.RegisterType
+{
+    id = 'reposition_into_engulfer',
+    text = 'Reposition Into Engulfer Space',
+    createBehavior = function()
+        return ActivatedAbilityRepositionIntoEngulferBehavior.new{}
+    end
+}
+
+function ActivatedAbilityRepositionIntoEngulferBehavior:SummarizeBehavior(ability, creatureLookup)
+    return "Reposition into the engulfing creature's space"
+end
+
+--Find the token of the creature that applied the given ongoing effect to us.
+function ActivatedAbilityRepositionIntoEngulferBehavior:FindEngulferToken(creatureProps)
+    for _, entry in ipairs(creatureProps:ActiveOngoingEffects()) do
+        if entry.ongoingEffectid == self.ongoingEffectid then
+            local casterInfo = nil
+            pcall(function() casterInfo = entry.casterInfo end)
+            if casterInfo ~= nil and casterInfo.tokenid ~= nil then
+                local tok = dmhub.GetTokenById(casterInfo.tokenid)
+                if tok ~= nil and tok.valid and tok.properties ~= nil then
+                    return tok
+                end
+            end
+        end
+    end
+    return nil
+end
+
+function ActivatedAbilityRepositionIntoEngulferBehavior:Cast(ability, casterToken, targets, options)
+    if self.ongoingEffectid == "none" then
+        return
+    end
+
+    --The move trigger dispatches from INSIDE the engine's Move call (OnMove
+    --fires mid-move), so an immediate Teleport here would be overwritten when
+    --the move finalizes its destination. Yield until the mover's location has
+    --been stable for a few ticks before deciding whether a snap is needed.
+    local lastLoc = casterToken.loc
+    local stable = 0
+    for i = 1, 40 do
+        coroutine.yield(0.1)
+        if not casterToken.valid then
+            return
+        end
+        local cur = casterToken.loc
+        if cur.x == lastLoc.x and cur.y == lastLoc.y then
+            stable = stable + 1
+            if stable >= 3 then
+                break
+            end
+        else
+            stable = 0
+            lastLoc = cur
+        end
+    end
+
+    local engulferTok = self:FindEngulferToken(casterToken.properties)
+    if engulferTok ~= nil then
+        --Captive side: the caster carries the effect; snap them into their
+        --engulfer's footprint.
+        self.SnapIntoFootprint(engulferTok, casterToken)
+        return
+    end
+
+    --Engulfer side: the caster is the creature whose movement dragged its
+    --captives along (or left them behind); snap every creature carrying this
+    --effect FROM the caster into the caster's footprint.
+    for _, tok in ipairs(dmhub.allTokens) do
+        if tok.charid ~= casterToken.charid and tok.valid and tok.properties ~= nil then
+            for _, entry in ipairs(tok.properties:ActiveOngoingEffects()) do
+                if entry.ongoingEffectid == self.ongoingEffectid then
+                    local casterInfo = nil
+                    pcall(function() casterInfo = entry.casterInfo end)
+                    if casterInfo ~= nil and casterInfo.tokenid == casterToken.id then
+                        self.SnapIntoFootprint(casterToken, tok)
+                    end
+                end
+            end
+        end
+    end
+end
+
+--Teleport captiveToken to the nearest free square of engulferToken's
+--footprint, unless it is already inside or the engulfer is dead.
+function ActivatedAbilityRepositionIntoEngulferBehavior.SnapIntoFootprint(engulferTok, captiveToken)
+    local engulferDead = false
+    pcall(function() engulferDead = engulferTok.properties:IsDead() end)
+    if engulferDead then
+        return
+    end
+
+    if MCDMUtils.IsInsideFootprint(engulferTok, captiveToken) then
+        return
+    end
+
+    local dest = MCDMUtils.NearestFootprintLoc(engulferTok, captiveToken)
+    if dest ~= nil then
+        captiveToken:Teleport(dest)
+    end
+end
+
+function ActivatedAbilityRepositionIntoEngulferBehavior:EditorItems(parentPanel)
+    local result = {}
+
+    local effectOptions = {
+        { id = "none", text = "Choose Effect..." },
+    }
+    for k, eff in unhidden_pairs(dmhub.GetTable("characterOngoingEffects") or {}) do
+        effectOptions[#effectOptions+1] = { id = k, text = eff.name }
+    end
+
+    result[#result+1] = gui.Panel{
+        classes = {"formPanel"},
+        gui.Label{
+            classes = {"formLabel"},
+            text = "Effect:",
+        },
+        gui.Dropdown{
+            sort = true,
+            hasSearch = true,
+            idChosen = self.ongoingEffectid,
+            options = effectOptions,
+            change = function(element)
+                self.ongoingEffectid = element.idChosen
+            end,
+        },
+    }
+
+    return result
 end
