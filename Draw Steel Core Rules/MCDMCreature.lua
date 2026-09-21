@@ -1991,7 +1991,18 @@ creature.RegisterSymbol {
 creature.RegisterSymbol {
     symbol = "captain",
     lookup = function(c)
-        return (not c.minion) and c:has_key("_tmp_minionSquad")
+        --Only minions carry _tmp_minionSquad; the captain is recorded on the shared
+        --squad table by the minions' RefreshSquadInfo, so look it up from there.
+        if c.minion then
+            return false
+        end
+        local squadName = c:MinionSquad()
+        if squadName == nil then
+            return false
+        end
+        local squad = g_minionSquadTables[squadName]
+        return squad ~= nil and squad.captain ~= nil and squad.captain.valid and
+            squad.captain.properties == c and (squad.liveMinions or 0) > 0
     end,
     help = {
         name = "Captain",
