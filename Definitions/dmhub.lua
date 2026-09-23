@@ -370,6 +370,11 @@ function dmhub.MarkTicketSeen(reportId) end
 --- @param options {reportId: string, status: string, complete: nil|fun(), error: nil|fun(message: string)}
 function dmhub.SetTicketStatus(options) end
 
+--- Opens a PDF file on the local disk (e.g. a path from OpenFileDialog) for reading, without uploading it anywhere. Returns nil if the file does not exist. The document's summary is nil until the file has been read, so poll it. RenderToData works on the returned document; page images ids (GetPageImageId) do not.
+--- @param path string
+--- @return PDFDocument|nil
+function dmhub.OpenLocalPDF(path) end
+
 --- Opens an operating system file dialog. id should uniquely identify this 'kind' of file open operation. The folder the user navigates to will be saved and future calls to this function with the same id will begin in that folder. The open callback will be called once for each file opened. If multiFiles is true, then openFiles will be called with a list of files opened. If the user cancels the interaction without opening a file, the cancel callback will be called. Extensions should contain possible file types that may be open, it should be in a format like {'wav', 'mp3', 'ogg'}
 --- @param options {id: string, extensions: string[], multiFiles: boolean, prompt: string, open: nil|(fun(path: string): nil), openFiles: nil|(fun(paths: string[]): nil), cancel: nil|(fun(): nil)}
 function dmhub.OpenFileDialog(options) end

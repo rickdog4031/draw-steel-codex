@@ -8,6 +8,37 @@ ActivatedAbilityAugmentedAbilityBehavior = RegisterGameType("ActivatedAbilityAug
 
 ActivatedAbilityAugmentedAbilityBehavior.hasCast = false
 
+--- True when this cast is being aimed by a creature hostile to the one making
+--- it -- a monster forcing its victim to strike ("the target makes a free
+--- strike against a creature of the cackler's choice"). Every "target makes a
+--- ..." standard ability routes through this behavior, so the whole family is
+--- covered here.
+--- An ally directing the cast (the tactician telling a hero to strike) shares
+--- the caster's enemies, and a self-invoke ("you may make a free strike") is
+--- the caster's own choice, so neither counts: only a hostile director reverses
+--- which side the chooser wants to hit.
+--- @param ability ActivatedAbility The augmenting ability, carrying the invoker.
+--- @param creature any The creature that will make the synthesized cast.
+--- @return boolean
+local function AimedByOpposingCreature(ability, creature)
+    local invoker = ability:try_get("invoker")
+    if invoker == nil or invoker == creature then
+        return false
+    end
+
+    local invokerToken = dmhub.LookupToken(invoker)
+    local casterToken = dmhub.LookupToken(creature)
+    if invokerToken == nil or (not invokerToken.valid) or casterToken == nil or (not casterToken.valid) then
+        return false
+    end
+
+    if invokerToken.charid == casterToken.charid then
+        return false
+    end
+
+    return not invokerToken:IsFriend(casterToken)
+end
+
 function ActivatedAbilityAugmentedAbilityBehavior:SynthesizeAbilities(ability, creature)
 	local abilities = creature:GetActivatedAbilities()
 
@@ -76,6 +107,14 @@ function ActivatedAbilityAugmentedAbilityBehavior:SynthesizeAbilities(ability, c
 			synth.actionNumber = ability.actionNumber
 			synth.castingTime = ability.castingTime
 			synth.castingTimeDuration = ability:try_get("castingTimeDuration")
+
+            --The targeting slider's "Enemies" position is evaluated against the
+            --creature making the strike, so on a forced strike it withholds
+            --exactly the creatures the forcing creature is entitled to name --
+            --the victim's own allies -- and reads as a prohibition. Mark the
+            --cast so the slider opens on "Creatures" instead; see
+            --ActivatedAbility:TargetModeOptions. Report 2P99A7MU.
+            synth._tmp_aimedByOpposingCreature = AimedByOpposingCreature(ability, creature)
 
             if not self.modifier:try_get("mustPayResourceCost", false) then
                 --mustPayResourceCost off: the routed ability does not pay its own cost; it

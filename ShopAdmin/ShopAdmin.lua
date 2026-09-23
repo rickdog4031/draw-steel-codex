@@ -485,8 +485,16 @@ ShowShopPanel = function(parentPanel)
 
         item = function(element, item)
             element:SetClass("hidden", false)
+            local sameItem = m_item ~= nil and m_item.id == item.id
             m_item = item
 
+            --This event also fires every time the item is saved. A new monitor
+            --downloads all of the item's gift codes, one request each, so only
+            --make one for a different item; otherwise each save floods the
+            --request queue and starves every other fetch.
+            if sameItem and m_couponMonitor ~= nil then
+                return
+            end
 
             if m_couponMonitor ~= nil then
                 m_couponMonitor.events:Unlisten(element)

@@ -564,17 +564,38 @@ wrapper in the direct-edit workflow. Keep the cross-referenced UUIDs consistent 
 
 ## Power Roll Tiers
 
-Draw Steel abilities use power rolls (2d10 + characteristic) with three tiers of outcomes. In the YAML:
+Draw Steel abilities use power rolls with three tiers of outcomes. In the YAML:
 
 ```yaml
 - __typeName: ActivatedAbilityPowerRollBehavior
-  roll: 2d10 + Might
-  attrid: mgt
+  roll: 2d10 + Highest Characteristic
   tiers:
     - "5 damage"                           # Tier 1 (<= 11)
     - "9 damage; push 2"                   # Tier 2 (12-16)
     - "12 damage; push 4; M<2 prone"       # Tier 3 (17+)
 ```
+
+### Monster Roll Formula (CRITICAL)
+
+A monster's power roll is **always** `2d10 + Highest Characteristic` -- even when the
+statblock prints `2d10 + 3`, `2d10 + Might` or `2d10 + Might or Agility`. Monster level
+scaling raises the creature's highest characteristic, and only this formula follows it; a
+flat number or a named characteristic silently stops the ability scaling. (The editor's
+new power roll defaults to this formula.)
+
+- **Leave `attrid` unset** on these rolls. When set, modifiers read it as the roll's
+  characteristic instead of the formula (Warped, Bleeding, `Roll Characteristic`).
+- **Targets make a test** ("each target makes an Agility test"): the targets roll, not the
+  monster. Use the **Reactive Test** roll type -- `resistanceRoll: true` with
+  `resistanceAttr` set to the tested characteristic. `resistanceAttr` defaults to
+  Intuition and ignores `attrid`, so always set it. `roll` is ignored but must still be
+  present. Tier 1 is the target's worst outcome.
+- **The monster makes a test** ("the troll makes a Might test", `isTest: true`): roll the
+  named characteristic -- `roll: 2d10 + Might` with `attrid: mgt`, which test modifiers
+  filter on.
+- **Summons that roll with their summoner's characteristic** keep it
+  (`2d10 + Summoner.Reason`).
+- Hero class abilities are different: they name their characteristic (`2d10 + Might`).
 
 ### Tier String Syntax
 
@@ -734,8 +755,7 @@ characterFeatures:
   categorization: "Signature Ability"
   behaviors:
     - __typeName: ActivatedAbilityPowerRollBehavior
-      roll: "2d10 + 2"
-      attrid: mgt
+      roll: "2d10 + Highest Characteristic"
       tiers: ["5 damage", "9 damage", "12 damage"]
 ```
 
@@ -753,8 +773,7 @@ characterFeatures:
   categorization: "Signature Ability"
   behaviors:
     - __typeName: ActivatedAbilityPowerRollBehavior
-      roll: "2d10 + 2"
-      attrid: rea
+      roll: "2d10 + Highest Characteristic"
       tiers: ["5 fire damage", "9 fire damage", "12 fire damage"]
 ```
 
@@ -771,10 +790,28 @@ characterFeatures:
   categorization: "Ability"
   behaviors:
     - __typeName: ActivatedAbilityPowerRollBehavior
-      resistanceRoll: true
-      roll: "2d10 + 2"
-      attrid: mgt
+      roll: "2d10 + Highest Characteristic"
       tiers: ["3 sonic damage", "6 sonic damage", "9 sonic damage; M<2 prone"]
+```
+
+### Targets Make a Test (Reactive Test)
+Rules text like "Each enemy in the area makes an Agility test" -- each target rolls, not the monster:
+```yaml
+- __typeName: ActivatedAbility
+  name: "Choking Cloud"
+  guid: <uuid>
+  actionResourceId: "d19658a2-4d7b-4504-af9e-1a5410fb17fd"
+  targeting: area
+  targetType: enemies
+  range: 3
+  keywords: { Area: true, Magic: true }
+  categorization: "Ability"
+  behaviors:
+    - __typeName: ActivatedAbilityPowerRollBehavior
+      resistanceRoll: true              # "Reactive Test" in the editor
+      resistanceAttr: agl               # the tested characteristic -- always set it
+      roll: "2d10 + Highest Characteristic"   # ignored for target rolls, but must be present
+      tiers: ["6 poison damage; dazed (save ends)", "3 poison damage", "No effect"]  # tier 1 = target's worst
 ```
 
 ### Ability That Invokes Another
@@ -782,7 +819,7 @@ For complex abilities that chain actions (attack then ally moves, etc.):
 ```yaml
 behaviors:
   - __typeName: ActivatedAbilityPowerRollBehavior
-    roll: "2d10 + 2"
+    roll: "2d10 + Highest Characteristic"
     tiers: ["5 damage", "9 damage", "12 damage"]
   - __typeName: ActivatedAbilityInvokeAbilityBehavior
     # Invokes a sub-ability for the secondary effect

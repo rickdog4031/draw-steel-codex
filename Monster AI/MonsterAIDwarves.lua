@@ -1408,31 +1408,27 @@ MonsterAI:RegisterPrompt{
     end,
 }
 
-local function FindMarauderRestraintTarget(invokerToken, abilityClone, symbols)
-    local best = nil
-    local bestStamina = nil
-    for _,target in ipairs(dmhub.allTokens) do
-        if LiveCreature(target) and not target:IsFriend(invokerToken)
-            and MonsterAI.TargetDistance(invokerToken, target) <= abilityClone:GetRange(invokerToken.properties)
-            and abilityClone:TargetPassesFilter(invokerToken, target, symbols) then
-            local stamina = target.properties:CurrentHitpoints()
-            if best == nil or stamina > bestStamina then
-                best = target
-                bestStamina = stamina
-            end
-        end
-    end
-    return best
-end
-
+--Levitating Axes' 3 Malice rider (also used by Ajax Will Pay Well). The invoke has already
+--narrowed symbols.allowedtargets to targets next to a marauder lord ally, so the AI only
+--decides whether to pay once for all of them.
 MonsterAI:RegisterPrompt{
     prompts = {"Dwarf Marauder Lord:Levitating Axes - 3 Malice Restrain"},
     handler = function(ai, invokerToken, casterToken, abilityClone, symbols, options)
-        if not CanSpendMalice(3) then
-            return {targets = {}}
+        local targets = {}
+        if CanSpendMalice(3) then
+            for charid in pairs(symbols.allowedtargets or {}) do
+                local target = FindTokenByCharid(charid)
+                if LiveCreature(target) then
+                    targets[#targets+1] = {token = target}
+                end
+            end
         end
-        local target = FindMarauderRestraintTarget(invokerToken, abilityClone, symbols)
-        return {targets = cond(target ~= nil, {{token = target}}, {})}
+
+        --An AI answer skips the action bar, which is what normally charges the cost.
+        if #targets > 0 then
+            abilityClone._tmp_payInvokedCost = true
+        end
+        return {targets = targets}
     end,
 }
 
@@ -1440,13 +1436,7 @@ MonsterAI:RegisterPrompt{
     prompts = {"Dwarf Marauder Lord:Invoked Ability"},
     handler = function(ai, invokerToken, casterToken, abilityClone, symbols, options)
         local guid = abilityClone:try_get("guid", "")
-        if guid == "88c0bc57-8dfe-4b1f-a56c-86636e57a576" then
-            if not CanSpendMalice(3) then
-                return {targets = {}}
-            end
-            local target = FindMarauderRestraintTarget(invokerToken, abilityClone, symbols)
-            return {targets = cond(target ~= nil, {{token = target}}, {})}
-        elseif guid == "f99c39fe-8c43-4035-9d2b-520f81bfc295" then
+        if guid == "f99c39fe-8c43-4035-9d2b-520f81bfc295" then
             local target = nil
             for _,candidate in ipairs(dmhub.allTokens) do
                 if LiveCreature(candidate) and not candidate:IsFriend(invokerToken)

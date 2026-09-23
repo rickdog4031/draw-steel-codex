@@ -102,11 +102,11 @@ displayOrder: 0
 Behaviors are the core of what an ability does. They execute in order when the ability is cast. Each has `__typeName` and type-specific fields.
 
 ### ActivatedAbilityPowerRollBehavior
-The Draw Steel power roll. Rolls 2d10 + attribute, resolves into 3 tiers.
+The Draw Steel power roll. Rolls 2d10 + a characteristic, resolves into 3 tiers.
 
 ```yaml
 - __typeName: ActivatedAbilityPowerRollBehavior
-  roll: "2d10 + 3"                  # the roll formula (usually "2d10 + N")
+  roll: "2d10 + Highest Characteristic"  # monsters: always this (see below)
   tiers:                            # tier 1 (<=11), tier 2 (12-16), tier 3 (17+)
     - "5 damage"                    # each tier is a DrawSteelCommand rule string
     - "9 damage"
@@ -114,6 +114,13 @@ The Draw Steel power roll. Rolls 2d10 + attribute, resolves into 3 tiers.
   modesSelected:                    # only if parent ability has multipleModes
     - 1                             # 1-indexed mode this roll applies to
 ```
+
+**Monster rolls are always `2d10 + Highest Characteristic`**, whatever the statblock prints:
+monster level scaling raises the highest characteristic, and only this formula follows it.
+Leave `attrid` unset. When targets make the test ("each target makes an Agility test"), use
+the Reactive Test roll type instead: `resistanceRoll: true` plus `resistanceAttr` for the
+tested characteristic (it defaults to Intuition). Hero abilities name their characteristic
+(`2d10 + Might`). Full rules: the implement-content skill, "Monster Roll Formula".
 
 Tier strings are parsed by ActivatedAbilityDrawSteelCommandBehavior's rule engine. They support:
 - Damage: `"5 damage"`, `"9 fire damage"`, `"2d6 + 3 damage"`
@@ -328,7 +335,7 @@ Trigger event types: `takedamage`, `endturn`, `beginturn`, `creaturedeath`, `d20
   keywords: { Strike: true, Melee: true, Weapon: true }
   behaviors:
   - __typeName: ActivatedAbilityPowerRollBehavior
-    roll: "2d10 + 3"
+    roll: "2d10 + Highest Characteristic"
     tiers:
     - "5 damage"
     - "9 damage"
@@ -339,7 +346,7 @@ Trigger event types: `takedamage`, `endturn`, `beginturn`, `creaturedeath`, `d20
 ```yaml
 behaviors:
 - __typeName: ActivatedAbilityPowerRollBehavior
-  roll: "2d10 + 2"
+  roll: "2d10 + Highest Characteristic"
   tiers:
   - "4 damage"
   - "7 damage; slowed (save ends)"
@@ -356,7 +363,7 @@ behaviors:
   keywords: { Magic: true, Ranged: true, Area: true }
   behaviors:
   - __typeName: ActivatedAbilityPowerRollBehavior
-    roll: "2d10 + 4"
+    roll: "2d10 + Highest Characteristic"
     tiers:
     - "3 fire damage"
     - "6 fire damage"
@@ -374,11 +381,11 @@ behaviors:
   keywords: { Strike: true, Melee: true, Ranged: true, Weapon: true }
   behaviors:
   - __typeName: ActivatedAbilityPowerRollBehavior
-    roll: "2d10 + 3"
+    roll: "2d10 + Highest Characteristic"
     modesSelected: [1]
     tiers: ["5 damage", "8 damage", "11 damage"]
   - __typeName: ActivatedAbilityPowerRollBehavior
-    roll: "2d10 + 3"
+    roll: "2d10 + Highest Characteristic"
     modesSelected: [2]
     tiers: ["4 damage", "7 damage", "10 damage"]
 ```
@@ -393,7 +400,7 @@ behaviors:
   numTargets: "all"
   behaviors:
   - __typeName: ActivatedAbilityPowerRollBehavior
-    roll: "2d10 + 5"
+    roll: "2d10 + Highest Characteristic"
     tiers:
     - "6 damage; push 1"
     - "10 damage; push 3"

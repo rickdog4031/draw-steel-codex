@@ -1689,6 +1689,20 @@ local SpellStyles = {
 	},
 }
 
+--- An innate spell entry's usageLimitOptions, or nil when it is absent or unusable.
+--- Some records store a string here instead of a table (see ActivatedAbility:GetUsageLimitOptions).
+--- The callers below already treat nil as "no usage limit", and assigning a field on a
+--- string would throw outright, so fold a corrupt value into the nil case.
+--- @return table|nil
+local function InnateUsageLimitOptions(innateInfo)
+	local options = innateInfo.usageLimitOptions
+	if type(options) == "table" then
+		return options
+	end
+
+	return nil
+end
+
 local CreateSpellRow = function(options)
 
 	local spellRow
@@ -1796,14 +1810,15 @@ local CreateSpellRow = function(options)
 					return
 				end
 
-				if innateInfo.usageLimitOptions == nil or innateInfo.usageLimitOptions.resourceRefreshType == "none" then
+				local usageLimitOptions = InnateUsageLimitOptions(innateInfo)
+				if usageLimitOptions == nil or usageLimitOptions.resourceRefreshType == "none" then
 					element.text = "at will"
 					return
 				end
 
-				if innateInfo.usageLimitOptions.resourceRefreshType == "short" then
+				if usageLimitOptions.resourceRefreshType == "short" then
 					element.text = "/short rest"
-				elseif innateInfo.usageLimitOptions.resourceRefreshType == "long" then
+				elseif usageLimitOptions.resourceRefreshType == "long" then
 					element.text = "/long rest"
 				else
 					element.text = "/day"
@@ -1814,8 +1829,9 @@ local CreateSpellRow = function(options)
 					return
 				end
 				local refreshType = "none"
-				if m_innateInfo.usageLimitOptions ~= nil then
-					refreshType = m_innateInfo.usageLimitOptions.resourceRefreshType
+				local usageLimitOptions = InnateUsageLimitOptions(m_innateInfo)
+				if usageLimitOptions ~= nil then
+					refreshType = usageLimitOptions.resourceRefreshType
 				end
 
 				local refreshArray
@@ -1847,14 +1863,14 @@ local CreateSpellRow = function(options)
 
 				refreshType = refreshArray[index]
 
-				if m_innateInfo.usageLimitOptions == nil then
+				if usageLimitOptions == nil then
 					m_innateInfo.usageLimitOptions = {
 						resourceRefreshType = refreshType,
 						charges = 1,
 						resourceid = dmhub.GenerateGuid(),
 					}
 				else
-					m_innateInfo.usageLimitOptions.resourceRefreshType = refreshType
+					usageLimitOptions.resourceRefreshType = refreshType
 				end
 
 				CharacterSheet.instance.data.info.token.properties:Invalidate()
@@ -1867,9 +1883,10 @@ local CreateSpellRow = function(options)
 			characterLimit = 1,
 			change = function(element)
 				local num = tonumber(element.text)
-				if num ~= nil then
+				local usageLimitOptions = InnateUsageLimitOptions(m_innateInfo)
+				if num ~= nil and usageLimitOptions ~= nil then
 					num = math.floor(num)
-					m_innateInfo.usageLimitOptions.charges = num
+					usageLimitOptions.charges = num
 				end
 				element:FireEvent("refreshSpell", m_spell, m_innateInfo)
 			end,
@@ -1877,13 +1894,14 @@ local CreateSpellRow = function(options)
 				if innateInfo == nil then
 					return
 				end
-				if innateInfo.usageLimitOptions == nil or innateInfo.usageLimitOptions.resourceRefreshType == "none" then
+				local usageLimitOptions = InnateUsageLimitOptions(innateInfo)
+				if usageLimitOptions == nil or usageLimitOptions.resourceRefreshType == "none" then
 					element:SetClass("hidden", true)
 					return
 				end
 
 				element:SetClass("hidden", false)
-				element.text = tostring(innateInfo.usageLimitOptions.charges)
+				element.text = tostring(usageLimitOptions.charges)
 			end,
 		}
 	end

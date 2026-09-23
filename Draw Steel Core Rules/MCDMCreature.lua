@@ -4317,6 +4317,12 @@ end
 --- @param maxInstances number
 --- @param newTokenid string
 function creature:CheckConditionInstances(conditionid, maxInstances, newTokenid)
+    --Not redundant with RefreshToken, which records targets too late for a multi-target cast to count its own.
+    local newToken = dmhub.GetTokenById(newTokenid)
+    if newToken ~= nil then
+        self:NotifyConditionCaster(newToken, conditionid)
+    end
+
     local conditionCasterSource = self:try_get("_tmp_conditionCasterSource")
     if conditionCasterSource == nil then
         return

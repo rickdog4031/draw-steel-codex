@@ -759,6 +759,30 @@ ActivatedAbility.usageLimitOptions = {
 	resourceid = "none",
 }
 
+local g_warnedUsageLimitOptions = {}
+
+--- The ability's usageLimitOptions, guaranteed to be a table.
+--- Some records store a string here (an import tool wrote a truncated dict repr). Indexing
+--- a string yields nil rather than throwing, so an unguarded caller takes the limited-use
+--- path with no charges and prices the ability 0/0: permanently unusable, nothing logged.
+--- @return table
+function ActivatedAbility:GetUsageLimitOptions()
+	local result = self.usageLimitOptions
+	if type(result) == "table" then
+		return result
+	end
+
+	local key = self.guid or self.name or "(unknown)"
+	if not g_warnedUsageLimitOptions[key] then
+		g_warnedUsageLimitOptions[key] = true
+		dmhub.Debug(string.format(
+			"usageLimitOptions:: ability %s (%s) stores a %s, not a table; treating it as having no usage limit",
+			tostring(self.name), tostring(key), type(result)))
+	end
+
+	return ActivatedAbility.usageLimitOptions
+end
+
 function ActivatedAbility.StandardArgs()
 	return {
 		guid = dmhub.GenerateGuid(),
@@ -1801,7 +1825,7 @@ end
 
 --- @return boolean
 function ActivatedAbility:MultiCharge()
-	return self.usageLimitOptions.multicharge == true
+	return self:GetUsageLimitOptions().multicharge == true
 end
 
 --given a cost being paid to use this ability, calculates the "Dice Faces" symbol.
@@ -1848,6 +1872,9 @@ function ActivatedAbility:SwitchModes(i)
 
     -- Preserve invoke-specific fields through mode switch.
     result.invoker = self:try_get("invoker")
+    -- Including the forced-strike targeting marker: losing it here would put
+    -- the slider back on "Enemies" the moment the player flipped mode.
+    result._tmp_aimedByOpposingCreature = self:try_get("_tmp_aimedByOpposingCreature")
     result.skippable = self:try_get("skippable")
     result.countsAsCast = self:try_get("countsAsCast")
     result.promptOverride = self:try_get("promptOverride")
@@ -2103,21 +2130,22 @@ function ActivatedAbility:GetCost(casterToken, options)
 		}
 	end
 
-	if self.usageLimitOptions.resourceRefreshType ~= 'none' then
-		local usage = creature:GetResourceUsage(self.usageLimitOptions.resourceid, self.usageLimitOptions.resourceRefreshType)
-		local maxCharges = ExecuteGoblinScript(self.usageLimitOptions.charges, creature:LookupSymbol(), 0)
+	local usageLimitOptions = self:GetUsageLimitOptions()
+	if usageLimitOptions.resourceRefreshType ~= 'none' then
+		local usage = creature:GetResourceUsage(usageLimitOptions.resourceid, usageLimitOptions.resourceRefreshType)
+		local maxCharges = ExecuteGoblinScript(usageLimitOptions.charges, creature:LookupSymbol(), 0)
 		local hasResources = usage < maxCharges
 		local availableCharges = math.max(0, maxCharges - usage)
 		result.details[#result.details+1] = {
-			cost = self.usageLimitOptions.resourceid,
+			cost = usageLimitOptions.resourceid,
 			canAfford = hasResources,
 			maxCharges = maxCharges,
 			quantity = options.charges,
 			availableCharges = availableCharges,
 			description = string.format("%d/%d", availableCharges, maxCharges),
-			refreshType = self.usageLimitOptions.resourceRefreshType,
-			paymentOptions = cond(hasResources, {{resourceid = self.usageLimitOptions.resourceid, quantity = options.charges}}, {}),
-			expendedOptions = cond(not hasResources, {{resourceid = self.usageLimitOptions.resourceid, quantity = options.charges}}, {}),
+			refreshType = usageLimitOptions.resourceRefreshType,
+			paymentOptions = cond(hasResources, {{resourceid = usageLimitOptions.resourceid, quantity = options.charges}}, {}),
+			expendedOptions = cond(not hasResources, {{resourceid = usageLimitOptions.resourceid, quantity = options.charges}}, {}),
 		}
 
 		result.canAfford = result.canAfford and hasResources

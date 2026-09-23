@@ -38,6 +38,13 @@ local g_settingTargetObjects = setting {
 --Reports NZZ7QH5W / 5FFRQ2DF / 9TYWTXFB.
 local g_targetModeAbilityKey = nil
 
+--Which ability the player deliberately clicked "Enemies" on while another
+--creature was directing the cast. Such a cast does not open on "Enemies" (see
+--GetTargetMode), but the position stays on the slider, and this is what makes
+--one click on it stick instead of being overridden straight back. Mirrors
+--g_targetModeAbilityKey above, including being nil at load.
+local g_targetModeEnemiesAbilityKey = nil
+
 --- @param ability ActivatedAbility
 --- @return string Not every ability carries a guid, so fall back to the name.
 local function TargetModeKey(ability)
@@ -112,6 +119,18 @@ end
 function ActivatedAbility:GetTargetMode()
     local value = g_settingTargetObjects:Get()
     local options = self:TargetModeOptions()
+
+    --"Enemies" is evaluated against the creature making the strike, so on a
+    --cast another creature is directing (a monster forcing its victim to strike
+    --"a creature of the attacker's choice") it withholds the victim's own
+    --allies -- precisely the creatures the attacker may name -- and reads as a
+    --prohibition. Such a cast opens on "Creatures" instead. The position itself
+    --is left on the slider, since a deliberate click on it is still a choice
+    --the player is entitled to make. Report 2P99A7MU.
+    if value == "enemies" and self:try_get("_tmp_aimedByOpposingCreature", false)
+        and g_targetModeEnemiesAbilityKey ~= TargetModeKey(self) then
+        value = false
+    end
 
     --another ability's "Objects" says nothing about this one: use our default.
     if value == true and g_targetModeAbilityKey ~= TargetModeKey(self) then
@@ -2792,6 +2811,10 @@ function ActivatedAbility:Render(options, params)
                                 --see g_targetModeAbilityKey.
                                 if element.value == true then
                                     g_targetModeAbilityKey = TargetModeKey(self)
+                                end
+                                --see g_targetModeEnemiesAbilityKey.
+                                if element.value == "enemies" then
+                                    g_targetModeEnemiesAbilityKey = TargetModeKey(self)
                                 end
                                 g_settingTargetObjects:Set(element.value)
                             end,

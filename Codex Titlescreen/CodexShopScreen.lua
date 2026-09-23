@@ -171,6 +171,11 @@ local fontWeights = {"thin", "extralight", "light", "regular", "medium", "semibo
 
 local heightStretch = 175
 
+--The Go Back button hanging off an item page's top-left corner: its width
+--and the gap between it and the page's left edge.
+local g_backButtonWidth = 170
+local g_backButtonGap = 24
+
 local shopStyles = {
 	--Streamed art eases in when its texture arrives (see TrackCoverImage).
 	--The unqualified rule keeps the panel transparent until the "loaded"
@@ -3710,6 +3715,40 @@ local ShowItemDetailsInternal = function(args)
 		--text shows up top for gift display.
 		cond(args.gift, m_shopItemText),
 
+		--Go Back, hanging just off the page's top-left corner so it scrolls
+		--away with the top of the page. Styled as the page's own Go Back pill.
+		--Not in the gift view. (and/or rather than cond, which would build it
+		--there too.)
+		(not args.gift) and gui.Label{
+			classes = {"itemButton"},
+			floating = true,
+			halign = "left",
+			valign = "top",
+			x = -(g_backButtonWidth + g_backButtonGap),
+			vmargin = 0,
+			text = "Go Back",
+			width = g_backButtonWidth,
+
+			styles = {
+				--the icon follows the text when the pill inverts on hover.
+				{
+					selectors = {"itemButtonIcon", "parent:hover"},
+					bgcolor = "black",
+					transitionTime = 0.1,
+				},
+			},
+
+			press = function(element)
+				element:FireEventOnParents("showProductsPage")
+			end,
+
+			gui.Panel{
+				classes = {"itemButtonIcon"},
+				bgimage = "phosphor/arrow-left-bold.png",
+				interactable = false,
+			},
+		} or nil,
+
 		--Dice showcase: the configured banner, centered, with Add to Cart /
 		--Equip below it. Shown for Dice items; collapsed for everything else
 		--(which uses the image gallery + text column below).
@@ -4353,17 +4392,6 @@ local ShowItemDetailsPanel = function(args)
 				bgimage = "icons/icon_common/icon_common_29.png",
 			},
 		},
-
-
-		gui.Label{
-			classes = {"itemButton"},
-			vmargin = 16,
-			text = "Go Back",
-
-			press = function(element)
-				element:FireEventOnParents("showProductsPage")
-			end,
-		},
 	}
 
 	return resultPanel
@@ -4837,6 +4865,13 @@ local function CreateShopScreenInternal(arguments)
 				element:FireEventTree("showProductDetails", item)
 				element:FireEventTree("refreshCart", m_shoppingCart)
 
+				--Opening a product starts at the top of its page. Not on a
+				--re-fire from inside the page (source == nil, e.g. a gallery
+				--press), which should keep the reader's place.
+				if source ~= nil then
+					element:FireEventTree("scrollToTop")
+				end
+
 				--Funnel attribution: which surface brought the user to this
 				--product page -- "featuredBanner" (top banner's View Dice),
 				--"productTile" (grid cards below), "cartRow", or "bundleLink".
@@ -5040,22 +5075,24 @@ local function CreateShopScreenInternal(arguments)
 				--the column there; at 16:9 and narrower the root is exactly
 				--1920 and the right-align keeps the scrollbar's 16px slack on
 				--the left, same as always.
+				--Starts below the floating top row (close button, Redeem, View
+				--Cart) so the scrollbar and scrolled content stay under it.
 				halign = cond(screenIsUltrawide, "center", "right"),
 				valign = "top",
+				tmargin = 40,
 				width = "1920-16",
-				height = "100%",
+				height = "100%-40",
 				vscroll = true,
 				flow = "vertical",
+
+				scrollToTop = function(element)
+					element.vscrollPosition = 1
+				end,
 
 				gui.Panel{
 					flow = "vertical",
 					width = "100%",
 					height = "auto",
-
-					gui.Panel{
-						--padding
-						height = 40
-					},
 
 					--Main shop page header, above the featured dice banner. Same
 					--shopTitle/shopDescription styling as the inventory header

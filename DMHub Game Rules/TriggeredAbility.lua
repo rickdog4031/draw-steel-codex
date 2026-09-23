@@ -1463,7 +1463,7 @@ function TriggeredAbility:Trigger(characterModifier, creature, symbols, auraCont
 		-- For mandatory triggers with a usage limit, pay the full cost upfront
 		-- before entering the coroutine. This prevents the same trigger from
 		-- firing multiple times in a single movement loop.
-		if self.usageLimitOptions.resourceRefreshType ~= 'none' then
+		if self:GetUsageLimitOptions().resourceRefreshType ~= 'none' then
 			self:ConsumeResources(casterToken, {})
 			argOptions.alreadyPaid = true
 		end

@@ -8,7 +8,9 @@ This is the **draw-steel-codex** repository — the Lua mod source code for [DMH
 
 ## How the Code is Loaded
 
-`main.lua` at the root is the module entry point. It contains a flat list of `require(...)` calls that load every file in the project. Each `require` uses the pattern `ModuleName_XXXX.FileName`, where `ModuleName_XXXX` is a subdirectory name (with a hex suffix that acts as a module ID). Files are loaded in order — dependencies must come before the files that use them.
+What loads, and in what order, is decided by the **CodeMod records in the cloud**: each mod's file list, in its stored order, with mods ordered by their dependencies. Dependencies must come before the files that use them. A `.lua` file on disk that is not in its mod's cloud file list is never loaded.
+
+`main.lua` at the root is **informational only and is never run**. The engine generates it (`CodeModManager.CreateDefinitionsIndexFile`) as an index for editors and LuaLS: a flat list of `require(...)` calls mirroring the cloud file lists as they were when it was generated, so it can be stale. Each `require` uses the pattern `ModuleName_XXXX.FileName`, where `ModuleName_XXXX` is a subdirectory name (with a hex suffix that acts as a module ID). Editing it changes nothing at runtime.
 
 Each Lua file begins with:
 ```lua
