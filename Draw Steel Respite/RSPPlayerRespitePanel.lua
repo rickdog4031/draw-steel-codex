@@ -3,6 +3,7 @@ local mod = dmhub.GetModLoading()
 --- Player Step 1: which of my heroes are taking the Respite, and am I done
 --- saying so. The mirror of the Director's Participants step.
 --- @class RSPPlayerRespitePanel: GameType
+--- @field new fun(o?: table): RSPPlayerRespitePanel
 RSPPlayerRespitePanel = RegisterGameType("RSPPlayerRespitePanel")
 
 local INSTRUCTIONS = [[

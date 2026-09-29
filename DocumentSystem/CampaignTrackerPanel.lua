@@ -30,6 +30,8 @@ local mod = dmhub.GetModLoading()
 ----------------------------------------------------------------------
 
 --- @class CampaignNote: MarkdownDocument
+--- @field new fun(o?: table): CampaignNote
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 CampaignNote = RegisterGameType("CampaignNote", "MarkdownDocument")
 
 --Upload() routes to self.tableName, so rows land in our own table.
@@ -1004,7 +1006,7 @@ local function LoadRunItem(item)
         end
         LaunchablePanel.LaunchPanelByName("Negotiation", { charid = item.charid })
     else
-        local doc = (dmhub.GetTable(item.tableName) or {})[item.docid]
+        local doc = (dmhub.GetTable(item.tableName) or {})[item.docid] --[[@as CustomDocument]]
         if doc == nil or doc:try_get("hidden", false) then
             gui.ModalMessage {
                 title = "Not found",
@@ -2912,6 +2914,7 @@ end
 ----------------------------------------------------------------------
 
 ---@class RichExit: RichTag
+--- @field new fun(o?: table): RichExit
 RichExit = RegisterGameType("RichExit", "RichTag")
 RichExit.tag = "exit"
 RichExit.hasEdit = false

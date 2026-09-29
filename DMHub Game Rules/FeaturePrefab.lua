@@ -1,9 +1,11 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterFeaturePrefabs: GameType
+--- @field new fun(o?: table): CharacterFeaturePrefabs
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name for this prefab collection.
 --- @field details string Description text.
---- @field tableName string Data table name ("featurePrefabs").
+--- @field tableName "featurePrefabs" Data table name ("featurePrefabs").
 --- A named collection of CharacterFeature prefabs that can be referenced from class/feat editors.
 CharacterFeaturePrefabs = RegisterGameType("CharacterFeaturePrefabs")
 
@@ -80,7 +82,7 @@ end
 
 local SetPrefab = function(tableName, prefabPanel, prefabid)
 	local prefabTable = dmhub.GetTable(tableName) or {}
-	local prefab = prefabTable[prefabid]
+	local prefab = prefabTable[prefabid] --[[@as CharacterFeaturePrefabs]]
 	local UploadPrefab = function()
 		dmhub.SetAndUploadTableItem(tableName, prefab)
 	end

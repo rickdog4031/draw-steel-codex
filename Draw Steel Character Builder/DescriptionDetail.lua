@@ -2,6 +2,7 @@
     Description detail
 ]]
 --- @class CBDescriptionDetail: GameType
+--- @field new fun(o?: table): CBDescriptionDetail
 CBDescriptionDetail = RegisterGameType("CBDescriptionDetail")
 
 local mod = dmhub.GetModLoading()

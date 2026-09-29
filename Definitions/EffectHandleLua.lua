@@ -1,6 +1,7 @@
 ---@meta
 
 --- @class EffectHandleLua
+--- @field alive boolean (read-only) False once the effect has been stopped (by Stop(), by the scripted animation that spawned it ending, or a looping ttl) or its instance has been destroyed (e.g. with its token or on a map change). True while it plays or is still loading.
 EffectHandleLua = {}
 
 --- Stop emission immediately; live particles fade out naturally.

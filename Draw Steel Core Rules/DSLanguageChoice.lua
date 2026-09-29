@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterLanguageChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterLanguageChoice
 --- @field name string Display name ("Language").
 --- @field description string Prompt shown to the player.
 --- @field categories string[] Language category ids to filter available languages (currently unused).
@@ -218,6 +219,7 @@ CharacterChoice.RegisterChoice{
 -------------------------------------------------------------------------------
 
 --- @class CharacterForgetLanguageChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterForgetLanguageChoice
 --- @field name string Display name ("Forget a Language").
 --- @field description string Prompt shown to the player.
 --- @field numChoices number|string|table Number of languages the player must forget.

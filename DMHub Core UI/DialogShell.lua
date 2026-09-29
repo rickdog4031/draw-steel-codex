@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 --- type, a working area that belongs entirely to the caller, and a footer of
 --- evenly divided cells under a second rule.
 --- @class DialogShell: GameType
+--- @field new fun(o?: table): DialogShell
 --- Reach the panels through Root, WorkingArea, Header and Footer rather than
 --- these fields: a shell built without a footer never assigns one, and reading
 --- an unset field on a game type raises where try_get returns nil.

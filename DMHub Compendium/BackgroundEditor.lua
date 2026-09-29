@@ -3,7 +3,7 @@ local mod = dmhub.GetModLoading()
 
 local SetBackground = function(tableName, backgroundPanel, backgroundid)
 	local backgroundTable = dmhub.GetTable(tableName) or {}
-	local background = backgroundTable[backgroundid]
+	local background = backgroundTable[backgroundid] --[[@as Background]]
 	local UploadBackground = function()
 		dmhub.SetAndUploadTableItem(tableName, background)
 	end

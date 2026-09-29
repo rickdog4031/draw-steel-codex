@@ -420,6 +420,7 @@ local function RenderChatAttachment(attachment, message)
 end
 
 --- @class ChatAttachmentMessage: GameType
+--- @field new fun(o?: table): ChatAttachmentMessage
 ChatAttachmentMessage = RegisterGameType("ChatAttachmentMessage")
 ChatAttachmentMessage.channel = "chat"
 ChatAttachmentMessage.chatAttachmentBlobId = false
@@ -434,6 +435,7 @@ function ChatAttachmentMessage:Render(message)
 end
 
 --- @class ChatImageMessage: GameType
+--- @field new fun(o?: table): ChatImageMessage
 ChatImageMessage = RegisterGameType("ChatImageMessage")
 ChatImageMessage.channel = "chat"
 ChatImageMessage.chatImageBlobId = false
@@ -495,7 +497,7 @@ local CreateObjectMessagePanel = function(message)
 
 	if message.tableid ~= nil and objectInfo == nil then
 		local dataTable = dmhub.GetTable(message.tableid)
-		objectInfo = dataTable[message.objectid]
+		objectInfo = dataTable[message.objectid] --[[@as table]]
 	end
 
 	local renderPanel = nil

@@ -26,9 +26,11 @@ end
 -- When a token ends their turn, their initiative entry has the current round incremented.
 
 --- @class InitiativeQueue: GameType
+--- @field new fun(o?: table): InitiativeQueue
 InitiativeQueue = RegisterGameType("InitiativeQueue")
 
 --- @class InitiativeQueueEntry: GameType
+--- @field new fun(o?: table): InitiativeQueueEntry
 InitiativeQueueEntry = RegisterGameType("InitiativeQueueEntry")
 
 function InitiativeQueue:GameModeInfo()
@@ -160,7 +162,11 @@ function InitiativeQueue.GetTokensForInitiativeId(initiativeid, allTokens)
 			--turn processing and the Monster AI on the host, so an invisible
 			--monster must not drop out of it there. (Trade-off: the player
 			--host's own initiative bar can show an invisible monster's face.)
-			if tok.properties ~= nil and (tok.properties:GetMonsterType() == monsterType or tok.properties:MinionSquad() == monsterType) and (IsDMOrPlayerHost() or not tok.invisibleToPlayers) then
+			--Skip grouped tokens: initiativeGrouping wins in GetInitiativeId, and
+			--the grouping scan below collects them. Matching them here too put a
+			--squad folded onto its summoner's initiative on its stale MONSTER-
+			--entry as well: two cards, one never clearable (report H9EJABBF).
+			if tok.properties ~= nil and not tok.properties.initiativeGrouping and (tok.properties:GetMonsterType() == monsterType or tok.properties:MinionSquad() == monsterType) and (IsDMOrPlayerHost() or not tok.invisibleToPlayers) then
 				result[#result+1] = tok
 			end
 		end

@@ -3,6 +3,7 @@ local mod = dmhub.GetModLoading()
 local g_rampageResourceId = "9f418676-96be-402b-92da-0f50294146b3"
 
 --- @class AnimalCompanion: monster
+--- @field new fun(o?: table): AnimalCompanion
 AnimalCompanion = RegisterGameType("AnimalCompanion", "monster")
 
 creature.companionid = false

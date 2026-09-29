@@ -1,6 +1,7 @@
 --- General utility functions and styling configuration for downtime system
 --- Provides data formatting, array operations, and centralized UI styles
 --- @class DTHelpers: GameType
+--- @field new fun(o?: table): DTHelpers
 DTHelpers = RegisterGameType("DTHelpers")
 
 -- Turn on the background to see lines around the downtime tab panels

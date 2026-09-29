@@ -1,7 +1,9 @@
 local mod = dmhub.GetModLoading()
 
 --- @class EquipmentCategory: GameType
---- @field tableName string Data table name ("equipmentCategories").
+--- @field new fun(o?: table): EquipmentCategory
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
+--- @field tableName "equipmentCategories" Data table name ("equipmentCategories").
 --- @field name string Display name.
 --- @field editorType string Editor category shown in the compendium ("Gear", "Weapon", "Armor", etc.).
 --- @field superset nil|string Parent category id, or nil if top-level.

@@ -4,9 +4,11 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class Party: GameType
+--- @field new fun(o?: table): Party
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name.
 --- @field details string Description / lore text.
---- @field tableName string Data table name ("parties").
+--- @field tableName "parties" Data table name ("parties").
 --- @field playerParty boolean If true, this is the player-character party.
 --- @field noncombatant boolean If true, this party does not engage in combat.
 --- @field color string Hex color used to tint tokens belonging to this party.
@@ -143,7 +145,7 @@ end
 local SetData
 SetData = function(tableName, partyPanel, partyid)
 	local dataTable = dmhub.GetTable(tableName) or {}
-	local party = dataTable[partyid]
+	local party = dataTable[partyid] --[[@as Party]]
 	local UploadParty = function(partyItem)
 		dmhub.SetAndUploadTableItem(tableName, partyItem or party)
 	end
@@ -306,7 +308,7 @@ SetData = function(tableName, partyPanel, partyid)
 	for friendid,friends in pairs(friendsIndex) do
 		if friendid ~= partyid then
 			local desc = "monsters"
-			local friendInfo = dataTable[friendid]
+			local friendInfo = dataTable[friendid] --[[@as Party]]
 			if friendInfo ~= nil then
 				desc = friendInfo.name
 			elseif friendid == GetDefaultPartyID() then
@@ -375,6 +377,7 @@ function Party.CreateEditor()
 end
 
 --- @class PartyInfo:loot
+--- @field new fun(o?: table): PartyInfo
 --- @field partyid string Id of the Party this info object belongs to.
 --- Per-game session data for a party, including shared inventory (inherited from loot).
 PartyInfo = RegisterGameType("PartyInfo", "loot")

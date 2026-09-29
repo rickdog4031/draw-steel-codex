@@ -580,6 +580,7 @@ function GameHud.CreateRollOnTableDialog(self)
 end
 
 --- @class RollOnTableProperties: RollProperties
+--- @field new fun(o?: table): RollOnTableProperties
 RollOnTableProperties = RegisterGameType("RollOnTableProperties", "RollProperties")
 
 function RollOnTableProperties:GetOutcome(rollInfo)

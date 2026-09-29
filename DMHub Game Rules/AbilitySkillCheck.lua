@@ -12,6 +12,7 @@ local function track(eventType, fields)
 end
 
 --- @class ActivatedAbilitySkillCheckBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilitySkillCheckBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field consequenceText string Text shown when the check fails.
 --- @field rollType string What is rolled: "attribute" or a specific skill/attribute id.

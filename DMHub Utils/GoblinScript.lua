@@ -260,6 +260,7 @@ BuiltinGoblinScriptFunctions = {
 }
 
 --- @class GoblinScriptTestObject: GameType
+--- @field new fun(o?: table): GoblinScriptTestObject
 GoblinScriptTestObject = RegisterGameType("GoblinScriptTestObject")
 GoblinScriptTestObject.lookupSymbols = {
     self = function(c)

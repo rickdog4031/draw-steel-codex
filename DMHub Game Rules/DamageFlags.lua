@@ -1,7 +1,9 @@
 local mod = dmhub.GetModLoading()
 
 --- @class DamageFlag: GameType
---- @field tableName string Data table name ("damageFlags").
+--- @field new fun(o?: table): DamageFlag
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
+--- @field tableName "damageFlags" Data table name ("damageFlags").
 --- @field name string Flag name (e.g. "magical"). Stored lowercase in DamageFlag.Flags.
 --- @field Flags table<string, DamageFlag> Cached map of lowercase flag name to DamageFlag object.
 DamageFlag = RegisterGameType("DamageFlag")

@@ -1,6 +1,8 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Title:CharacterFeat
+--- @field new fun(o?: table): Title
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name.
 --- @field description string Description text.
 --- @field prerequisite string Prose describing the deed that earns this title.
@@ -8,7 +10,7 @@ local mod = dmhub.GetModLoading()
 --- text the Director adjudicates, and must not be passed to ExecuteGoblinScript.
 --- @field effect string Rules text describing the title's effect.
 --- @field echelon string Echelon tier required to hold this title (e.g. "1", "2", "3").
---- @field tableName string Data table name ("titles").
+--- @field tableName "titles" Data table name ("titles").
 Title = RegisterGameType("Title", "CharacterFeat")
 
 --standard title fields.
@@ -86,7 +88,7 @@ MarkdownRender.RegisterTable { tableName = "titles", prefix = "title" }
 
 local SetTitle = function(tableName, titlePanel, titleid)
     local titleTable = dmhub.GetTable(tableName) or {}
-    local title = titleTable[titleid]
+    local title = titleTable[titleid] --[[@as Title]]
     local UploadTitle = function()
         dmhub.SetAndUploadTableItem(tableName, title)
     end

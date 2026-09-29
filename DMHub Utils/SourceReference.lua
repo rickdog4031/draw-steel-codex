@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class SourceReference: GameType
+--- @field new fun(o?: table): SourceReference
 --- @string type
 --- @string docid
 --- @number page

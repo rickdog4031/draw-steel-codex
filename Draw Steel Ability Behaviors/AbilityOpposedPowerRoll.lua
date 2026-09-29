@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityOpposedRollBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityOpposedRollBehavior
 ActivatedAbilityOpposedRollBehavior = RegisterGameType("ActivatedAbilityOpposedRollBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityOpposedRollBehavior.summary = 'Opposed Power Roll'

@@ -36,6 +36,7 @@ local mod = dmhub.GetModLoading()
 ----------------------------------------------------------------------
 
 --- @class DSVictoryScreen: GameType
+--- @field new fun(o?: table): DSVictoryScreen
 DSVictoryScreen = RegisterGameType("DSVictoryScreen")
 
 -- Proceed override hook: a mod (e.g. Encounter of the Week's Director-less

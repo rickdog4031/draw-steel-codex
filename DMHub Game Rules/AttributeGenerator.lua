@@ -1,7 +1,9 @@
 local mod = dmhub.GetModLoading()
 
 --- @class AttributeGenerator: GameType
---- @field tableName string Data table name ("attributeGenerator").
+--- @field new fun(o?: table): AttributeGenerator
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
+--- @field tableName "attributeGenerator" Data table name ("attributeGenerator").
 --- @field method string Generation method id: "manual", "standardArray", "roll", "pointbuy", etc.
 --- @field hiddenFromPlayers boolean If true, players cannot see or use this generator.
 --- @field ord number Ordering index for display in lists.

@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityFloatTextBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityFloatTextBehavior
 --- @field summary string Short label shown in behavior lists.
 ActivatedAbilityFloatTextBehavior = RegisterGameType("ActivatedAbilityFloatTextBehavior", "ActivatedAbilityBehavior")
 

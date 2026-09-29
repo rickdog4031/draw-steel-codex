@@ -27,6 +27,7 @@ local mod = dmhub.GetModLoading()
 --only two rings, with the tier 2 ring shown as the guaranteed one.
 
 --- @class ActivatedAbilityJumpBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityJumpBehavior
 ActivatedAbilityJumpBehavior = RegisterGameType("ActivatedAbilityJumpBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityJumpBehavior.summary = 'Jump (Roll to Target)'
@@ -685,6 +686,7 @@ dmhub.tokenAnimations:RegisterTeleport{
 }
 
 --- @class ActivatedAbilityHopBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityHopBehavior
 ActivatedAbilityHopBehavior = RegisterGameType("ActivatedAbilityHopBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityHopBehavior.summary = 'Hop In Place'

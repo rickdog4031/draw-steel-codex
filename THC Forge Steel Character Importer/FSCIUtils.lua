@@ -1,4 +1,5 @@
 --- @class FSCIUtils: GameType
+--- @field new fun(o?: table): FSCIUtils
 FSCIUtils = RegisterGameType("FSCIUtils")
 FSCIUtils.__index = FSCIUtils
 
@@ -293,6 +294,7 @@ end
 --- FSCIFillFlattener handles flattening hierarchical feature structures from both
 --- FSCILeveledChoiceImporter (leveled features) and FSCIChoiceImporter (direct features)
 --- @class FSCIFillFlattener: GameType
+--- @field new fun(o?: table): FSCIFillFlattener
 FSCIFillFlattener = RegisterGameType("FSCIFillFlattener")
 FSCIFillFlattener.__index = FSCIFillFlattener
 

@@ -2,6 +2,8 @@ local mod = dmhub.GetModLoading()
 
 --This is the start of a journaling system but not much has been done on it yet.
 --- @class JournalNode: GameType
+--- @field new fun(o?: table): JournalNode
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 JournalNode = RegisterGameType("JournalNode")
 
 JournalNode.name = "New Document"
@@ -9,8 +11,10 @@ JournalNode.parentid = "none"
 JournalNode.creatorid = "gm"
 
 --- @class JournalFolder: JournalNode
+--- @field new fun(o?: table): JournalFolder
 JournalFolder = RegisterGameType("JournalFolder", "JournalNode")
 --- @class JournalDocument: JournalNode
+--- @field new fun(o?: table): JournalDocument
 JournalDocument = RegisterGameType("JournalDocument", "JournalNode")
 
 JournalDocument.text = ""

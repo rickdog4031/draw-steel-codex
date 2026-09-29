@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityRecastBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityRecastBehavior
 ActivatedAbilityRecastBehavior = RegisterGameType("ActivatedAbilityRecastBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityRecastBehavior.summary = 'Recast Ability'

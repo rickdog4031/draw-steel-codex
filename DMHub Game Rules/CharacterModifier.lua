@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 --by a Character Feature or an Ongoing Effect and modifies the character's rules in some way.
 
 --- @class CharacterModifier: GameType
+--- @field new fun(o?: table): CharacterModifier
 --- @field name string Display name of the modifier.
 --- @field description string Human-readable description of what this modifier does.
 --- @field guid string Unique identifier for this modifier instance.

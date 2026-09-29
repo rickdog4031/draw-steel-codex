@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 --code is inside the Creature file though.
 
 --- @class Concentration: GameType
+--- @field new fun(o?: table): Concentration
 --- @field name string Name of the spell or ability being concentrated on.
 --- @field duration number Duration in rounds.
 --- @field time table Timestamp object used to compute rounds elapsed.

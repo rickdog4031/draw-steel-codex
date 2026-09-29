@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 --add some functionality to measurement systems you can do so in this file.
 
 --- @class MeasurementSystem: GameType
+--- @field new fun(o?: table): MeasurementSystem
 --- @field systems table[] List of available measurement system descriptors (id, value, unitName, unitSingular, etc.).
 --- @field value string Setting value id for this system (used to match dmhub.GetSettingValue("measurementsystem")).
 --- @field unitName string Plural unit label (e.g. "feet", "meters").

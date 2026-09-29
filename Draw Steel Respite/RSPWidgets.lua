@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 --- Controls shared by the Respite steps.
 --- @class RSPWidgets: GameType
+--- @field new fun(o?: table): RSPWidgets
 RSPWidgets = RegisterGameType("RSPWidgets")
 
 --- A "- [n] +" stepper over a bounded integer held in the session.

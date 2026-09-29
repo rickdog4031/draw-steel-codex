@@ -1,14 +1,17 @@
 local mod = dmhub.GetModLoading()
 
 --- @class DamageType: GameType
+--- @field new fun(o?: table): DamageType
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name (lowercase, e.g. "fire", "slashing").
---- @field tableName string Data table name ("damageTypes").
+--- @field tableName "damageTypes" Data table name ("damageTypes").
 --- @field category string Category id for grouping ("none" if uncategorized).
 --- @field hidden boolean If true, this damage type is not shown in UI menus.
 --- @field iscategory boolean If true, this entry is a category rather than a specific damage type.
 DamageType = RegisterGameType("DamageType")
 
 --- @class DamageFlag: GameType
+--- @field new fun(o?: table): DamageFlag
 DamageFlag = RegisterGameType("DamageFlag")
 
 --- @return DamageType

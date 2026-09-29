@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class FullscreenDisplay: GameType
+--- @field new fun(o?: table): FullscreenDisplay
 FullscreenDisplay = RegisterGameType("FullscreenDisplay")
 
 FullscreenDisplay.docid = "fullscreen_display"
@@ -156,6 +157,7 @@ end
 ----------------------------------------------------------------------
 
 --- @class DramaticBanner: GameType
+--- @field new fun(o?: table): DramaticBanner
 DramaticBanner = RegisterGameType("DramaticBanner")
 
 DramaticBanner.docid = "dramatic_banner"

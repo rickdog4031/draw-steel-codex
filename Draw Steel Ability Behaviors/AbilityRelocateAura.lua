@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityRelocateAuraBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityRelocateAuraBehavior
 --- A selectable ability behavior that relocates one of the caster's placed auras (by name) to the
 --- ability's targeted location. Mirrors the built-in "Can relocate" aura option (see
 --- ActivatedAbilityMoveAuraBehavior in DMHub Game Rules/Aura.lua), but usable from any ability.
@@ -132,6 +133,7 @@ function ActivatedAbilityRelocateAuraBehavior:EditorItems(parentPanel)
 end
 
 --- @class ActivatedAbilityPortalTransitBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityPortalTransitBehavior
 --- Fired from a portal aura's "onenter" trigger (see Aura.TriggerConditions in
 --- DMHub Game Rules/Aura.lua). The creature that stepped onto the portal is offered every
 --- unoccupied square adjacent to any OTHER portal aura of the same name owned by the same
@@ -994,6 +996,7 @@ end
 
 --- @field floatText string Label floated over each pulled creature ("" for none).
 --- @class ActivatedAbilityPullIntoCasterBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityPullIntoCasterBehavior
 ActivatedAbilityPullIntoCasterBehavior = RegisterGameType("ActivatedAbilityPullIntoCasterBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType{
@@ -1069,6 +1072,7 @@ end
 --- @field promptText string Prompt shown when several squares are equally near.
 --- @field floatText string Label floated over each displaced creature ("" for none).
 --- @class ActivatedAbilityDisplaceOverlappingBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityDisplaceOverlappingBehavior
 ActivatedAbilityDisplaceOverlappingBehavior = RegisterGameType("ActivatedAbilityDisplaceOverlappingBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType{
@@ -1306,6 +1310,7 @@ function ActivatedAbilityDisplaceOverlappingBehavior:EditorItems(parentPanel)
 end
 
 --- @class ActivatedAbilityHurlGrabbedBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityHurlGrabbedBehavior
 --- Throws a creature the caster is grabbing down a line ability (Ogre Goon "People Bowling").
 --- Runs with applyto = caster on a line-targeted ability, BEFORE its power roll:
 ---   1. picks the grabbed creature (prompting only if several pass hurlFilter),

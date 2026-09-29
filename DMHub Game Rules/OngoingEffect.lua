@@ -1,6 +1,8 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterOngoingEffect: CharacterFeature
+--- @field new fun(o?: table): CharacterOngoingEffect
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 CharacterOngoingEffect = RegisterGameType("CharacterOngoingEffect", "CharacterFeature")
 CharacterOngoingEffect.tableName = "characterOngoingEffects"
 CharacterOngoingEffect.stackable = false
@@ -229,6 +231,7 @@ end
 
 --a point in time in the game.
 --- @class TimePoint: GameType
+--- @field new fun(o?: table): TimePoint
 TimePoint = RegisterGameType("TimePoint")
 
 function TimePoint.Create()
@@ -359,6 +362,7 @@ function TimePoint:RoundsSince()
 end
 
 --- @class CharacterOngoingEffectInstance: GameType
+--- @field new fun(o?: table): CharacterOngoingEffectInstance
 --- @field ongoingEffectid string
 --- @field duration nil|number time in rounds
 --- @field time TimePoint time when effect was added.

@@ -11,6 +11,7 @@ local mod = dmhub.GetModLoading()
 -- summoner), and every other creature (monsters, objects, out-of-combat hits) is
 -- silently ignored -- so this behavior is safe to point at any "Apply To" selection.
 --- @class ActivatedAbilityTrackStatBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityTrackStatBehavior
 ActivatedAbilityTrackStatBehavior = RegisterGameType("ActivatedAbilityTrackStatBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilitySaveBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilitySaveBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field conditionsMode string Which conditions to attempt to save against: "all" or a specific condition id.
 --- @field rollMode string How the save is resolved: "roll" (make a die roll) or "purge" (auto-succeed without rolling).
@@ -215,6 +216,243 @@ function ActivatedAbilitySaveBehavior:PromptSaveItems(targetToken, items)
     end
 end
 
+-- One line per thing changing this save, for the roll dialog: bonuses to the
+-- roll (Save Bonus, Save Bonus vs <name>), a changed success threshold (Save
+-- Ends), and the Coward complication's keep-lowest roll.
+function ActivatedAbilitySaveBehavior:DescribeSaveModifiers(targetCreature, item, rollFormula)
+    local lines = {}
+
+    local function describe(attrName)
+        local entries = nil
+        pcall(function()
+            entries = targetCreature:DescribeModificationsToNamedCustomAttribute(attrName)
+        end)
+        return entries or {}
+    end
+
+    for _, e in ipairs(describe("Save Bonus")) do
+        lines[#lines+1] = string.format("%s to saves: %s", tostring(e.value), tostring(e.key))
+    end
+    for _, e in ipairs(describe("Save Bonus vs " .. item.name)) do
+        lines[#lines+1] = string.format("%s vs %s: %s", tostring(e.value), item.name, tostring(e.key))
+    end
+    for _, e in ipairs(describe("Save Ends")) do
+        lines[#lines+1] = string.format("Save on %s+: %s", tostring(e.current), tostring(e.key))
+    end
+    if string.find(rollFormula, "2d10kl1", 1, true) ~= nil then
+        lines[#lines+1] = "Coward: roll 2d10 and keep the lowest"
+    end
+
+    return lines
+end
+
+--"a-b" for a range of totals, a single number when a == b, nil when empty.
+local function SaveRangeText(a, b)
+    if a > b then
+        return nil
+    end
+    if a == b then
+        return tostring(a)
+    end
+    return string.format("%d-%d", a, b)
+end
+
+-- The roll dialog's Results panel for a save: a Fail row and a Save row with
+-- the totals that land on each, highlighted live as the dice tumble and
+-- settled once they land, a verdict line, and the modifiers in play.
+-- args: item, threshold (Save Ends), rollStr (evaluated roll), modifiers
+-- (lines from DescribeSaveModifiers), saveState (shared with the Hero Token
+-- rule; saveState.forced = the save was bought with a Hero Token).
+function ActivatedAbilitySaveBehavior.SaveResultsPopulateCustom(args)
+    return function(parentPanel)
+        local threshold = args.threshold
+
+        --The totals the roll can reach. RollMinValue ignores keep-lowest, so a
+        --Coward's 2d10kl1 is measured as the single d10 it behaves like.
+        local plainRoll = string.gsub(args.rollStr, "(%d+)d(%d+)k[lh]%d+", "1d%2")
+        local lo = dmhub.RollMinValue(plainRoll) or 1
+        local hi = dmhub.RollMaxValue(plainRoll) or 10
+
+        local failRange = SaveRangeText(lo, math.min(hi, threshold - 1)) or "-"
+        local saveRange = SaveRangeText(math.max(lo, threshold), hi) or "-"
+
+        local function OutcomeRow(isSave)
+            local rowClass = cond(isSave, "saveRowSuccess", "saveRowFail")
+            return gui.Panel{
+                classes = {"saveRow", rowClass},
+                bgimage = true,
+                width = "100%",
+                height = "auto",
+                flow = "horizontal",
+                vpad = 4,
+                borderBox = true,
+                saveResult = function(element, passed, final)
+                    element:SetClassTree("highlight", passed == isSave)
+                    element:SetClassTree("preview", not final)
+                end,
+                gui.Label{
+                    classes = {rowClass},
+                    text = cond(isSave, saveRange, failRange),
+                    width = "22%",
+                    height = "auto",
+                    fontSize = 20,
+                    bold = true,
+                    textAlignment = "center",
+                    valign = "center",
+                },
+                gui.Label{
+                    classes = {rowClass},
+                    text = string.format(cond(isSave, "<b>Save</b>\n<size=13>%s ends.</size>", "<b>Fail</b>\n<size=13>%s continues.</size>"), args.item.name),
+                    width = "78%",
+                    height = "auto",
+                    fontSize = 16,
+                    valign = "center",
+                },
+            }
+        end
+
+        local verdict = gui.Label{
+            classes = {"saveVerdict", "collapsed"},
+            width = "100%",
+            height = "auto",
+            textAlignment = "center",
+            fontSize = 20,
+            bold = true,
+            vmargin = 4,
+            saveResult = function(element, passed, final)
+                element:SetClass("collapsed", not final)
+                element:SetClass("passed", passed)
+                if args.saveState.forced then
+                    element.text = "SAVED with a Hero Token!"
+                elseif passed then
+                    element.text = "SAVED!"
+                else
+                    element.text = "FAILED"
+                end
+            end,
+        }
+
+        local modifierLabels = {}
+        for _, line in ipairs(args.modifiers or {}) do
+            modifierLabels[#modifierLabels+1] = gui.Label{
+                classes = {"saveModifier"},
+                text = line,
+                width = "100%",
+                height = "auto",
+                fontSize = 13,
+                hmargin = 6,
+            }
+        end
+
+        local tbl
+        tbl = gui.Panel{
+            width = "100%",
+            height = "auto",
+            flow = "vertical",
+            styles = ThemeEngine.MergeStyles{
+                { selectors = {"saveRow"}, bgcolor = "@bg" },
+                { selectors = {"saveRow", "highlight", "saveRowFail"}, bgcolor = "@danger" },
+                { selectors = {"saveRow", "highlight", "saveRowSuccess"}, bgcolor = "@success" },
+                --While the dice are still tumbling the highlight is only a preview.
+                { selectors = {"saveRow", "highlight", "preview"}, opacity = 0.55 },
+                { selectors = {"label", "highlight", "saveRowFail"}, color = "#ffffff" },
+                { selectors = {"label", "highlight", "saveRowSuccess"}, color = "#000000" },
+                { selectors = {"saveVerdict"}, color = "@danger" },
+                { selectors = {"saveVerdict", "passed"}, color = "@success" },
+                { selectors = {"saveModifier"}, color = "@fgMuted" },
+            },
+
+            data = {
+                faces = {},
+                numDice = 0,
+                mod = nil,
+                endTime = nil,
+                final = false,
+                rollInfo = nil,
+            },
+
+            --Re-rolls fire this again. The non-dice part of the total is taken
+            --from the first roll only: a re-roll's rollInfo.total is stale.
+            beginRoll = function(element, rollInfo, rollid)
+                local d = element.data
+                d.faces = {}
+                d.numDice = 0
+                d.endTime = nil
+                d.final = false
+                d.rollInfo = rollInfo
+                local mod = rollInfo.total
+                for _, roll in ipairs(rollInfo.rolls) do
+                    mod = mod - roll.result
+                    local events = chat.DiceEvents(roll.guid)
+                    if events ~= nil then
+                        events:Listen(element)
+                        d.numDice = d.numDice + 1
+                    end
+                end
+                if d.mod == nil then
+                    d.mod = mod
+                end
+                element:FireEventTree("saveResult", false, false)
+                element.thinkTime = 0.1
+            end,
+
+            diceface = function(element, diceguid, num, timeRemaining)
+                local d = element.data
+                if d.final then
+                    return
+                end
+                d.faces[diceguid] = num
+                local endTime = dmhub.Time() + timeRemaining
+                if d.endTime == nil or endTime > d.endTime then
+                    d.endTime = endTime
+                end
+                local total = d.mod or 0
+                for _, value in pairs(d.faces) do
+                    total = total + value
+                end
+                element:FireEventTree("saveResult", total >= threshold, false)
+            end,
+
+            --Settle once the dice have stopped; a roll with no dice to watch
+            --settles as soon as the dialog reports it finished.
+            think = function(element)
+                local d = element.data
+                if d.final or d.rollInfo == nil then
+                    element.thinkTime = nil
+                    return
+                end
+                local settled = (d.endTime ~= nil and dmhub.Time() > d.endTime)
+                    or (d.numDice == 0 and element:HasClass("finishedRolling"))
+                if not settled then
+                    return
+                end
+                d.final = true
+                element.thinkTime = nil
+                local total = d.rollInfo.total or 0
+                if d.numDice > 0 then
+                    total = d.mod or 0
+                    for _, value in pairs(d.faces) do
+                        total = total + value
+                    end
+                end
+                element:FireEventTree("saveResult", total >= threshold, true)
+            end,
+
+            OutcomeRow(false),
+            OutcomeRow(true),
+            verdict,
+            gui.Panel{
+                width = "100%",
+                height = "auto",
+                flow = "vertical",
+                children = modifierLabels,
+            },
+        }
+
+        parentPanel.children = {tbl}
+    end
+end
+
 -- Roll a save for a single item using the timeline roll dialog.
 -- Returns true if the save was rolled (not canceled).
 function ActivatedAbilitySaveBehavior:RollSaveInTimeline(ability, casterToken, targetToken, item, options)
@@ -225,6 +463,31 @@ function ActivatedAbilitySaveBehavior:RollSaveInTimeline(ability, casterToken, t
 
     local rollCanceled = false
     local rollComplete = false
+
+    --Worked out once, so the Results panel and the outcome agree.
+    local saveEnds = ExecuteGoblinScript("Save Ends", targetCreature:LookupSymbol(options.symbols or {}), 6, "Save Ends threshold")
+
+    --forced: a hero spent a Hero Token to succeed instead (see below).
+    local saveState = { forced = false }
+
+    --A hero who fails may spend a Hero Token to succeed instead. The rule takes
+    --over the Re-roll button only while the save on screen is a failure.
+    local isHero = targetCreature:IsHero()
+    if not isHero then
+        pcall(function() isHero = targetCreature:IsCompanion() end)
+    end
+    local rerollRule = nil
+    if isHero then
+        rerollRule = CharacterResource.HeroTokenSaveSucceedRule{
+            IsFailed = function(state)
+                return state.finished and (not saveState.forced) and state.total ~= nil and state.total < saveEnds
+            end,
+            Succeed = function(state)
+                saveState.forced = true
+                state.accept()
+            end,
+        }
+    end
 
     --Acquire the embedded roll dialog, queuing behind any other ability roll
     --in progress. The helper installs the cast-aware HideAbility OnFinishCast
@@ -251,14 +514,21 @@ function ActivatedAbilitySaveBehavior:RollSaveInTimeline(ability, casterToken, t
         --Accept Result / Re-roll step, consistent with power rolls.
         showDialogDuringRoll = true,
         amendable = true,
+        rerollRule = rerollRule,
+        PopulateCustom = ActivatedAbilitySaveBehavior.SaveResultsPopulateCustom{
+            item = item,
+            threshold = saveEnds,
+            rollStr = rollStr,
+            modifiers = self:DescribeSaveModifiers(targetCreature, item, rollFormula),
+            saveState = saveState,
+        },
         cancelRoll = function()
             rollCanceled = true
         end,
         completeRoll = function(rollInfo)
             rollComplete = true
 
-            local saveEnds = ExecuteGoblinScript("Save Ends", targetCreature:LookupSymbol(options.symbols or {}), 6, "Save Ends threshold")
-            local passed = rollInfo.total >= saveEnds
+            local passed = saveState.forced or rollInfo.total >= saveEnds
             if passed then
                 self:PurgeSaveItem(targetToken, item)
             elseif item.type == "ongoingEffect" or item.type == "condition" then

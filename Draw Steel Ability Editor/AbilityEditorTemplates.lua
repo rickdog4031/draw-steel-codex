@@ -26,6 +26,8 @@ local TEMPLATE_CATEGORIES = {
 -- ============================================================================
 
 --- @class AbilityTemplate: GameType
+--- @field new fun(o?: table): AbilityTemplate
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 AbilityTemplate = RegisterGameType("AbilityTemplate")
 AbilityTemplate.tableName = "abilityTemplates"
 AbilityTemplate.name = "New Template"

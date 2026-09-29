@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class InfoBubble: GameType
+--- @field new fun(o?: table): InfoBubble
 InfoBubble = RegisterGameType("InfoBubble")
 
 local styles = {

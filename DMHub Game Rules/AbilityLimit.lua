@@ -3,6 +3,7 @@ local mod = dmhub.GetModLoading()
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityLimitBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityLimitBehavior
 --- @field summary string Short label shown in behavior lists.
 ActivatedAbilityLimitBehavior = RegisterGameType("ActivatedAbilityLimitBehavior", "ActivatedAbilityBehavior")
 

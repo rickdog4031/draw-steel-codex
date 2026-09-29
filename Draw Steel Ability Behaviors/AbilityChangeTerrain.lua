@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityChangeTerrainBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityChangeTerrainBehavior
 ActivatedAbilityChangeTerrainBehavior = RegisterGameType("ActivatedAbilityChangeTerrainBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

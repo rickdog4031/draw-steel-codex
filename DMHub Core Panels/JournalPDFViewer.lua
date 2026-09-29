@@ -4715,6 +4715,7 @@ dmhub.DescribeDocument = function(url)
 end
 
 --- @class ImageDocument: GameType
+--- @field new fun(o?: table): ImageDocument
 ImageDocument = RegisterGameType("ImageDocument")
 
 ImageDocument.type = "image"
@@ -4760,6 +4761,7 @@ function ImageDocument:Render(options)
 end
 
 --- @class PDFWrapper: GameType
+--- @field new fun(o?: table): PDFWrapper
 PDFWrapper = RegisterGameType("PDFWrapper")
 
 PDFWrapper.docid = ""
@@ -4806,6 +4808,8 @@ function PDFWrapper:Render(options)
 end
 
 --- @class PDFFragment: GameType
+--- @field new fun(o?: table): PDFFragment
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 PDFFragment = RegisterGameType("PDFFragment")
 
 PDFFragment.tableName = "pdfReferences"

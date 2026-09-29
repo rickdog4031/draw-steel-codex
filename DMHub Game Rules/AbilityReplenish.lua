@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityReplenishBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityReplenishBehavior
 --- @field resourceid string Id of the CharacterResource to replenish.
 --- @field quantity nil|number|string|table Amount to restore; nil means restore to full.
 --- Behavior that replenishes a resource (such as hit points, spell slots, or action points) on the target.
@@ -19,6 +20,7 @@ ActivatedAbility.RegisterType
 }
 
 --- @class ResourceChatMessage: GameType
+--- @field new fun(o?: table): ResourceChatMessage
 --- @field tokenid string
 --- @field resourceid string
 --- @field quantity number
@@ -137,6 +139,7 @@ function ResourceChatMessage:Undo(message)
 end
 
 --- @class HealChatMessage: GameType
+--- @field new fun(o?: table): HealChatMessage
 --- @field tokenid string
 --- @field amount number
 --- @field text string

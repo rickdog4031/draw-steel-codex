@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Aura:CharacterFeature
+--- @field new fun(o?: table): Aura
 --- @field objectid string Id of the object placed to represent this aura ("none" if unset).
 --- @field iconid string Icon asset path.
 --- @field canrelocate boolean If true, the caster can spend an action to move the aura.
@@ -170,6 +171,7 @@ function Aura.Create(options)
 end
 
 --- @class AuraInstance: GameType
+--- @field new fun(o?: table): AuraInstance
 --- @field aura Aura The Aura definition this instance belongs to.
 --- @field casterid string Token id of the creature that cast/owns this aura.
 --- @field casterInitiativeId string|nil Initiative id the caster acted on, so a turn-scoped aura can still be expired once the caster is dead.
@@ -329,6 +331,7 @@ function Aura:GetSimplePowerRollTrigger(options)
             mandatory = false,
             hostile = true,
             environmentRoll = true,
+            environmentalSource = true,
             iconid = self.iconid,
             behaviors = {
                 rollBehaviorType.new(behaviorFields),
@@ -337,10 +340,49 @@ function Aura:GetSimplePowerRollTrigger(options)
     }
 end
 
+--- Builds the synthesized enter/start-of-turn trigger for the flat entry effect
+--- (entryEffectRule, e.g. "3 fire damage; burning (save ends)"), or nil when the
+--- rule is empty. Unlike the simple power roll there is nothing to roll or
+--- decide, so the trigger is mandatory and resolves the rule against the
+--- creature straight away. Adjacent-only contact never applies it.
+--- @param options nil|{adjacentOnly: boolean}
+--- @return nil|{trigger: string, ability: TriggeredAbility}
+function Aura:GetSimpleEntryEffectTrigger(options)
+    local rule = trim(self:try_get("entryEffectRule", "") or "")
+    if rule == "" then
+        return nil
+    end
+
+    if options ~= nil and options.adjacentOnly then
+        return nil
+    end
+
+    return {
+        trigger = "onenter",
+        ability = TriggeredAbility.Create{
+            name = self.name,
+            trigger = "onenter",
+            targetType = "self",
+            range = 0,
+            radius = 0,
+            silent = true,
+            mandatory = true,
+            environmentalSource = true,
+            iconid = self.iconid,
+            behaviors = {
+                ActivatedAbilityDrawSteelCommandBehavior.new{
+                    rule = rule,
+                },
+            },
+        },
+    }
+end
+
 --- Whether this aura is "damaging terrain" for movement advisories: it hurts
 --- creatures that enter it or move through it. True when the aura has an entry
---- power roll (Lava), per-tile move damage, or the explicit `damaging` flag
---- (for hand-authored auras whose damage comes from custom triggers).
+--- power roll (Lava), a flat entry effect (Burning Oil), per-tile move damage, or
+--- the explicit `damaging` flag (for hand-authored auras whose damage comes from
+--- custom triggers).
 --- @return boolean
 function Aura:IsDamaging()
     if self:try_get("damaging", false) == true then
@@ -348,6 +390,10 @@ function Aura:IsDamaging()
     end
 
     if self:try_get("movedamage", "none") ~= "none" then
+        return true
+    end
+
+    if trim(self:try_get("entryEffectRule", "") or "") ~= "" then
         return true
     end
 
@@ -1819,6 +1865,7 @@ function AuraInstance:GetModifiers()
 end
 
 --- @class ChildAuraInstance:AuraInstance
+--- @field new fun(o?: table): ChildAuraInstance
 --- A transient view over a parent AuraInstance for one entry in aura.subauras. Child views are
 --- built on demand by AuraInstance:GetChildInstances and are NEVER stored or serialized: they do
 --- not live in creature.auras or in the aura object's component properties. The engine registers
@@ -1914,6 +1961,7 @@ function AuraInstance:GetChildInstances()
 end
 
 --- @class AuraComponent: GameType
+--- @field new fun(o?: table): AuraComponent
 --- @field casterid string Token id of the creature that owns the aura.
 --- @field auraid string Guid of the AuraInstance on the caster.
 --- The object component attached to the placed map object representing an aura.

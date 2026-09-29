@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ConditionRider:CharacterOngoingEffect
+--- @field new fun(o?: table): ConditionRider
 --- @field allowEditingDisplayInfo boolean If true, the display info can be edited in the UI.
 --- @field removeThisInsteadOfCondition boolean If true, effects that remove the condition instead remove this rider.
 --- @field showAsMenuOption boolean If true, this rider is shown as a menu option alongside its parent condition.

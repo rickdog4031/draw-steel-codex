@@ -1,6 +1,10 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Hud: GameType
+--- @field new fun(o?: table): Hud
+--- @field dialogWorldPanel Panel Host for world-space dialogs; set by Hud.MainDialogPanel.
+--- @field mainDialogPanel Panel Main dialog layer; set by Hud.MainDialogPanel.
+--- @field modalPanel Panel Modal dialog layer; set by Hud.ModalDialogPanel.
 Hud = RegisterGameType("Hud")
 
 function Hud.HasFocus(self)
@@ -784,6 +788,23 @@ function Hud:UploadDialog(options)
 end
 
 --- @class GameHud: Hud
+--- @field new fun(o?: table): GameHud
+--- @field dialog SheetContainer The engine's sheet container, passed to dmhub.CreateGameHud.
+--- @field tokenInfo SheetHud The engine's token/selection interface, passed to dmhub.CreateGameHud.
+--- @field parentPanel Panel Root panel of the hud (dialog.sheet); set by dmhub.CreateGameHud.
+--- @field actionBarPanel Panel Set by the action bar when it is created.
+--- @field rollDialog Panel Set by dmhub.CreateGameHud (GameHud:CreateRollDialog).
+--- @field inventoryDialog Panel
+--- @field basicInventoryDialog Panel
+--- @field tradeInventoryDialog Panel
+--- @field createItemDialog Panel
+--- @field initiativeInterface table The initiative bar's interface table; set by GameHud.CreateInitiativeBar.
+--- @field initiativeCarousel Panel
+--- @field choiceInitiativeBar Panel
+--- @field respiteBar Panel
+--- @field combatSettingsButton Panel
+--- @field castingSpell boolean
+--- @field currentInitiativeId? string
 GameHud = RegisterGameType("GameHud", "Hud")
 
 -- Fullscreen host panel for the shop/inventory screen. Set by

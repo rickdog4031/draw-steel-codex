@@ -139,7 +139,11 @@ the engine gained a purpose-built API:
   (original cache restored); venla-deliantomb v21's payload is already in
   this machine's disk cache, so the new build registers art with no network.
 
-## Stray extra pregens from shop auto-install (DIAGNOSED 2026-08-29; not an EotW bug)
+## Stray extra pregens from shop auto-install (DIAGNOSED 2026-08-29; not an EotW bug; shop auto-install REMOVED 2026-09-25)
+
+Shop auto-install (owned store modules installed into every game the account
+directs) was removed from the engine and the shop UI on 2026-09-25, so this
+path no longer exists; the notes below are kept as history.
 
 An EotW game can show a hero nobody claimed. Traced live in
 `OtherworldlyWailingCorruptedWorg`: an unclaimed **Dwarf Fury** sat in the
@@ -1442,7 +1446,8 @@ cannot reach any of it, all of it inside the loading screen.
 Measured on a real EotW entry (`SacredClockworkThornSpindlegoth`, 11.2s to
 Complete and another 5.5s before the screen cleared):
 
-1. **Shop-module auto-install, ~5.3s.** `UpdateGameDetails` auto-installs every
+1. **Shop-module auto-install, ~5.3s** (the whole feature was removed on
+   2026-09-25). `UpdateGameDetails` auto-installed every
    module the account owns from the shop into any game it DMs. A fresh EotW
    game got `premium-tc_cemeteriescrypt` and `premium-tc_diggersdelvers` --
    map-building asset packs -- and each install cost a module install, a
@@ -6229,6 +6234,31 @@ Start-zone confinement stays on underneath):
   (`CreateEncounterPoolsPanel`, exported from the hud) floating at the
   rail's spot -- top inset 64, right margin 12 -- so players read it in
   the same place and form as during combat. UNRENDERED since the edit.
+- **Other players' mouse cursors** (user direction 2026-09-25: "like in map
+  view", and "almost all of it in the engine"). The engine's cursor sharing
+  (`PeerToPeerManager` mouse messages -> `RemoteMouseCursorManager` /
+  `RemoteMouseCursor`) gained a **screen-space mode**; the stage only turns
+  it on. `dmhub.screenSpaceCursorSurface` (a string surface id, nil =
+  normal map sharing) sets `PeerToPeerManager.screenSpaceCursorSurface`.
+  While it is set, the sender puts the pointer in the mouse message as a
+  0..1 screen position (bottom-left origin) with a new `surface` field and an
+  EMPTY `mapid`, so a client on an older engine simply does not show it (the
+  decoder ignores unknown fields; the empty mapid fails its map check).
+  Receivers with the same surface id up draw it with the existing prefab
+  (colour, name tag, clicked sprite, smoothing, 5 s expiry all unchanged)
+  placed from the screen position, and give it its own override-sorting
+  canvas on the `DropdownUI` sorting layer, order 32000, so it paints over
+  the Lua UI. While a surface is up, world cursors are hidden, and a
+  cursor switching between modes jumps rather than gliding. The existing
+  settings apply unchanged, and `blockingui` still suppresses sending --
+  which is why the stage must NOT carry that class. In
+  `EncounterMontageStage.lua`, `CreateScriptStage` acquires the mode
+  (`eotwstage`) in `create` and releases it on `Dismiss` or `destroy`,
+  REF COUNTED with a 0.15 s delayed release like the action-bar hide, so a
+  rebuild does not blink it off. Covers every beat the script stage hosts.
+  Screen position (not stage-relative) is fine because the stage is full
+  screen. UNVERIFIED: that `DropdownUI` sorts above the canvas the stage
+  lives on (read from the scene, not seen rendered).
 
 The parser, the runtime and the stage are built as three separable
 modules (`EncounterScript.lua`, `EncounterMontage.lua`,
@@ -7996,6 +8026,16 @@ no core change.
 ---
 
 # Status
+
+- 2026-09-25 (stage cursors): **Other players' mouse cursors show on the
+  script stage (montage, narrative and prep beats) via a new ENGINE
+  screen-space mode of the normal cursor sharing (`dmhub.screenSpaceCursorSurface`;
+  `PeerToPeerManager.cs`, `RemoteMouseCursorManager.cs`, `RemoteMouseCursor.cs`,
+  `LuaInterface.cs`, hand-added stub line in `Definitions/dmhub.lua`); the
+  stage just switches it on (`AcquireScreenCursors` / `ReleaseScreenCursors`
+  in `EncounterMontageStage.lua`). A first all-Lua version was replaced by
+  this the same day. Engine NEEDS BUILD, UNTESTED, UNCOMMITTED, not
+  deployed.** Design under "The stage (UI)", "Other players' mouse cursors".
 
 - 2026-09-24 (sub-documents, latest): **A script can be spread over several
   journal documents: a line that is nothing but a link (`[label](document:Name)`),

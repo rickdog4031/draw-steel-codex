@@ -6,6 +6,7 @@ local mod = dmhub.GetModLoading()
 --- a time and the total is re-read after each, since buying the Fishing event
 --- can produce an event that awards more.
 --- @class FSHShop: GameType
+--- @field new fun(o?: table): FSHShop
 FSHShop = RegisterGameType("FSHShop")
 
 --- What the Tackle table sells, in the order the rules list it.

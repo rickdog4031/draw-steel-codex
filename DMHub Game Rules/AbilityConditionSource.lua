@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityConditionSourceBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityConditionSourceBehavior
 --- @field summary string Short label shown in behavior lists.
 ActivatedAbilityConditionSourceBehavior = RegisterGameType("ActivatedAbilityConditionSourceBehavior", "ActivatedAbilityBehavior")
 

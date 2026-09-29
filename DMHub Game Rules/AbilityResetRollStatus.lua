@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityResetRollStatusBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityResetRollStatusBehavior
 --- @field summary string Short label shown in behavior lists.
 ActivatedAbilityResetRollStatusBehavior = RegisterGameType("ActivatedAbilityResetRollStatusBehavior", "ActivatedAbilityBehavior")
 

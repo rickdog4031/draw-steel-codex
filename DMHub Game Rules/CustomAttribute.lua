@@ -2,8 +2,10 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class CustomAttribute: GameType
+--- @field new fun(o?: table): CustomAttribute
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of the attribute.
---- @field tableName string Data table name ("customAttributes").
+--- @field tableName "customAttributes" Data table name ("customAttributes").
 --- @field attributeType string Value type: "number", "string", or "creatureSet".
 --- @field category string UI category label (e.g. "Custom").
 --- @field classid string Restriction to a class id, or "global" for all classes.
@@ -54,15 +56,19 @@ function CustomAttribute:RemovePossibleStringValue(val)
 end
 
 --- @class AttributeType: GameType
+--- @field new fun(o?: table): AttributeType
 AttributeType = RegisterGameType("AttributeType")
 
 --- @class AttributeTypeNumber:AttributeType
+--- @field new fun(o?: table): AttributeTypeNumber
 AttributeTypeNumber = RegisterGameType("AttributeTypeNumber", "AttributeType")
 
 --- @class AttributeTypeStringSet:AttributeType
+--- @field new fun(o?: table): AttributeTypeStringSet
 AttributeTypeStringSet = RegisterGameType("AttributeTypeStringSet", "AttributeType")
 
 --- @class AttributeTypeCreatureSet:AttributeType
+--- @field new fun(o?: table): AttributeTypeCreatureSet
 AttributeTypeCreatureSet = RegisterGameType("AttributeTypeCreatureSet", "AttributeType")
 
 --bestiary filter expression instead of picking a category/subtype/race."
@@ -86,6 +92,7 @@ function AttributeTypeCreatureSet.MakeFilterValue(expr)
 end
 
 --- @class CreatureSet: GameType
+--- @field new fun(o?: table): CreatureSet
 --- @field creatures string[] Token ids of live creatures explicitly added at runtime (e.g. by AbilityCreatureSet).
 --- @field bestiaryids string[] Bestiary GUIDs (keys in `assets.monsters`) resolved from modifier values at modify time.
 CreatureSet = RegisterGameType("CreatureSet")
@@ -246,6 +253,7 @@ RegisterGoblinScriptSymbol(CreatureSet, {
 })
 
 --- @class StringSet: GameType
+--- @field new fun(o?: table): StringSet
 --- @field strings string[] The strings in this set.
 StringSet = RegisterGameType("StringSet")
 StringSet.strings = {}

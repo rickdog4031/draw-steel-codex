@@ -7,6 +7,7 @@
     This supports CBKitDetail.
 ]]
 --- @class CharacterKitChoice: CharacterChoice
+--- @field new fun(o?: table): CharacterKitChoice
 CharacterKitChoice = RegisterGameType("CharacterKitChoice", "CharacterChoice")
 
 --- Construct from a hero

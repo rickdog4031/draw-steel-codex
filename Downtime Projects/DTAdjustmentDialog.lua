@@ -1,6 +1,7 @@
 --- Progress adjustment editing dialog for modifying DTAdjustment instances
 --- Provides consistent UI for editing adjustment amount and reason with validation
 --- @class DTAdjustmentDialog: GameType
+--- @field new fun(o?: table): DTAdjustmentDialog
 DTAdjustmentDialog = RegisterGameType("DTAdjustmentDialog")
 
 local WIDTH = 500

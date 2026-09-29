@@ -3,7 +3,7 @@ local mod = dmhub.GetModLoading()
 
 local SetRace = function(tableName, racePanel, raceid)
 	local raceTable = dmhub.GetTable(tableName) or {}
-	local race = raceTable[raceid]
+	local race = raceTable[raceid] --[[@as Race]]
 	local UploadRace = function()
 		dmhub.SetAndUploadTableItem(tableName, race)
 	end
@@ -274,6 +274,53 @@ local SetRace = function(tableName, racePanel, raceid)
 					race.moveSpeeds = DeepCopy(race.moveSpeeds) --in case this isn"t init yet.
 					race.moveSpeeds.walk = tonumber(element.text) or race.moveSpeeds.walk
 					element.text = tostring(race.moveSpeeds.walk)
+					UploadRace()
+				end,
+			},
+		}
+
+		--footprints and blood for heroes of this ancestry who haven't picked their own
+		--(character:GetDefaultBodyTrait). The global defaults (Feet, red) store nothing.
+		local raceFootprints = FootprintStyle.GetStyle(race:try_get("footprintStyle"))
+		children[#children+1] = gui.Panel{
+			classes = {"formStackedRow"},
+			gui.Label{
+				classes = {"formStacked"},
+				text = "Footprints:",
+			},
+			gui.Dropdown{
+				classes = {"formStacked"},
+				idChosen = raceFootprints and raceFootprints.id or FootprintStyle.noneId,
+				options = FootprintStyle.GetOptions(),
+				change = function(element)
+					---@cast element Dropdown
+					local chosen = element.idChosen
+					if chosen == FootprintStyle.defaultId then
+						chosen = nil
+					end
+					race.footprintStyle = chosen
+					UploadRace()
+				end,
+			},
+		}
+
+		children[#children+1] = gui.Panel{
+			classes = {"formStackedRow"},
+			gui.Label{
+				classes = {"formStacked"},
+				text = "Blood:",
+			},
+			gui.Dropdown{
+				classes = {"formStacked"},
+				idChosen = race:try_get("bloodColor") or BloodSpatter.defaultColor,
+				options = BloodSpatter.GetColorOptions(),
+				change = function(element)
+					---@cast element Dropdown
+					local chosen = element.idChosen
+					if chosen == BloodSpatter.defaultColor then
+						chosen = nil
+					end
+					race.bloodColor = chosen
 					UploadRace()
 				end,
 			},

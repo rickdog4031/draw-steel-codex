@@ -3272,7 +3272,8 @@ function CharSheet.AppearancePanel()
         },
 
         --The tracks this creature leaves on snow (FootprintStyles.lua). Unset means
-        --the default Feet style, so every creature leaves tracks until told not to.
+        --its ancestry's style (a devil's hooves), else Feet, so every creature leaves
+        --tracks until told not to. A form it has taken overrides this while it lasts.
         gui.Panel {
             vmargin = 16,
             flow = "horizontal",
@@ -3304,7 +3305,9 @@ function CharSheet.AppearancePanel()
                     ---@cast element Dropdown
                     local tok = CharacterSheet.instance.data.info.token
                     local chosen = element.idChosen
-                    if chosen == FootprintStyle.defaultId then
+                    --picking what the creature would leave anyway stores nothing, so it
+                    --keeps following its ancestry.
+                    if chosen == (tok.properties:GetDefaultBodyTrait("footprintStyle") or FootprintStyle.defaultId) then
                         chosen = nil
                     end
                     tok:ModifyProperties{
@@ -3321,12 +3324,67 @@ function CharSheet.AppearancePanel()
 
                     --a style that was deleted from the compendium shows as Feet,
                     --which is what the creature now leaves.
-                    local style = FootprintStyle.GetForCreature(info.token.properties)
+                    local style = FootprintStyle.GetNaturalForCreature(info.token.properties)
                     if style == nil then
                         element.idChosen = FootprintStyle.noneId
                     else
                         element.idChosen = style.id
                     end
+                end,
+            }
+        },
+
+        --What this creature bleeds (BloodSpatter.lua). Only shown when the Director
+        --has turned on the Show Blood game setting. Unset means its ancestry's blood
+        --(a revenant's none), else red.
+        gui.Panel {
+            vmargin = 16,
+            flow = "horizontal",
+            halign = "center",
+            valign = "top",
+            width = 400,
+            height = 24,
+            refreshAppearance = function(element, info)
+                element:SetClass("collapsed", not BloodSpatter.GameEnabled())
+            end,
+            linger = function(element)
+                gui.Tooltip{
+                    text = "The blood this creature spatters when it takes damage.",
+                    halign = "center",
+                    valign = "top",
+                }(element)
+            end,
+            gui.Label {
+                classes = {"sizeM"},
+                text = "Blood:",
+                width = "auto",
+                height = "auto",
+                halign = "left",
+                valign = "center",
+            },
+            gui.Dropdown {
+                width = 180,
+                valign = "center",
+                halign = "right",
+                options = BloodSpatter.GetColorOptions(),
+                change = function(element)
+                    ---@cast element Dropdown
+                    local tok = CharacterSheet.instance.data.info.token
+                    local chosen = element.idChosen
+                    if chosen == (tok.properties:GetDefaultBodyTrait("bloodColor") or BloodSpatter.defaultColor) then
+                        chosen = nil
+                    end
+                    tok:ModifyProperties{
+                        description = "Change blood",
+                        execute = function()
+                            tok.properties.bloodColor = chosen
+                        end,
+                    }
+                    CharacterSheet.instance:FireEvent("refreshAll")
+                end,
+                refreshAppearance = function(element, info)
+                    ---@cast element Dropdown
+                    element.idChosen = BloodSpatter.GetNaturalColorId(info.token.properties)
                 end,
             }
         },

@@ -2,10 +2,13 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class MCDMNegotiation: GameType
+--- @field new fun(o?: table): MCDMNegotiation
 MCDMNegotiation = RegisterGameType("MCDMNegotiation")
 --- @class MCDMMotivation: GameType
+--- @field new fun(o?: table): MCDMMotivation
 MCDMMotivation = RegisterGameType("MCDMMotivation")
 --- @class MCDMPitfall: GameType
+--- @field new fun(o?: table): MCDMPitfall
 MCDMPitfall = RegisterGameType("MCDMPitfall")
 
 function MCDMNegotiation.Create()
@@ -428,6 +431,7 @@ MCDMMotivation.motivations = {
 --"Sample Negotiators": a name, an impression score, flavor text, a description,
 --and free-form named motivations and pitfalls.
 --- @class NegotiatorTrait: GameType
+--- @field new fun(o?: table): NegotiatorTrait
 NegotiatorTrait = RegisterGameType("NegotiatorTrait")
 NegotiatorTrait.name = ""
 NegotiatorTrait.description = ""
@@ -441,6 +445,8 @@ function NegotiatorTrait.Create(args)
 end
 
 --- @class Negotiator: GameType
+--- @field new fun(o?: table): Negotiator
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 Negotiator = RegisterGameType("Negotiator")
 Negotiator.tableName = "negotiators"
 Negotiator.name = "New Negotiator"
@@ -640,6 +646,7 @@ end
 -- doc's livedata (mirrors LiveMontage). Everything the stage + rail read.
 --------------------------------------------------------------------------------
 --- @class LiveNegotiation: GameType
+--- @field new fun(o?: table): LiveNegotiation
 LiveNegotiation = RegisterGameType("LiveNegotiation")
 LiveNegotiation.docid = ""          --the backing NegotiationDocument id.
 LiveNegotiation.npcName = ""
@@ -742,6 +749,7 @@ end
 -- out). The read view is a scene page; "Begin Negotiation" presents the stage.
 --------------------------------------------------------------------------------
 --- @class NegotiationDocument: CustomDocument
+--- @field new fun(o?: table): NegotiationDocument
 NegotiationDocument = RegisterGameType("NegotiationDocument", "CustomDocument")
 NegotiationDocument.nodeType = "negotiation"
 NegotiationDocument.docType = "negotiation"   --pins the semantic type (see DocumentSystem.lua)

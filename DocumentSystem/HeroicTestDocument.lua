@@ -79,6 +79,7 @@ for _, id in ipairs(g_difficultyOrder) do
 end
 
 ---@class HeroicTestDocument:CustomDocument
+--- @field new fun(o?: table): HeroicTestDocument
 ---@field summary string Setup prose: what the hero is attempting.
 ---@field difficulty string "easy" | "medium" | "hard"
 ---@field characteristics table<string,boolean> Suggested characteristics (a SET).

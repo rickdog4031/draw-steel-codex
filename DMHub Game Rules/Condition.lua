@@ -1,9 +1,11 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterCondition:CharacterFeature
+--- @field new fun(o?: table): CharacterCondition
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name nil|string Display name of the condition. Class default "New Condition" applies when absent.
 --- @field description nil|string Rules text shown to players. Class default "" applies when absent.
---- @field tableName nil|string Name of the data table this condition is stored in ("charConditions"). Class-level default; often absent on serialized instances.
+--- @field tableName "charConditions" Name of the data table this condition is stored in ("charConditions"). Class-level default; often absent on serialized instances.
 --- @field ridersTableName nil|string Name of the table for condition riders ("conditionRiders"). Class-level default; often absent on serialized instances.
 --- @field emoji nil|string Emoji id shown in the UI ("none" if unused). Class default "none" applies when absent.
 --- @field immunityPossible nil|boolean If true, creatures can be immune to this condition. Often absent (defaults to false).
@@ -136,7 +138,7 @@ end
 
 local SetData = function(tableName, conditionPanel, condid)
 	local dataTable = dmhub.GetTable(tableName) or {}
-	local condition = dataTable[condid]
+	local condition = dataTable[condid] --[[@as CharacterCondition]]
 	local UploadCondition = function()
 		dmhub.SetAndUploadTableItem(tableName, condition)
 	end

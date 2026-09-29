@@ -1,9 +1,11 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Culture: GameType
+--- @field new fun(o?: table): Culture
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of the culture.
 --- @field description string Descriptive text.
---- @field tableName string Data table name ("cultures").
+--- @field tableName "cultures" Data table name ("cultures").
 --- @field group string Group label for UI display (e.g. "Custom").
 --- @field languageid string Language id associated with this culture.
 --- @field init boolean Whether this culture has been initialized (false for the default template).

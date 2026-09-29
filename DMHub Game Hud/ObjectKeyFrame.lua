@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class KeyFrameComponent: GameType
+--- @field new fun(o?: table): KeyFrameComponent
 KeyFrameComponent = RegisterGameType("KeyFrameComponent")
 
 dmhub.CreateKeyFrameComponent = function()

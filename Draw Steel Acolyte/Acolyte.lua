@@ -506,6 +506,7 @@ end)
 -- The verbose explanation lives in the card's hover tooltip.
 
 --- @class PatronsGazeChatMessage: GameType
+--- @field new fun(o?: table): PatronsGazeChatMessage
 PatronsGazeChatMessage = RegisterGameType("PatronsGazeChatMessage")
 
 --Spite severity tier from the amount of Gaze at stake. Mirrors the 3 / 4-9 /
@@ -725,6 +726,7 @@ end
 -- The dialog's own standard roll card is suppressed in section 8b.
 
 --- @class ActivatedAbilityPatronGazeResolveBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityPatronGazeResolveBehavior
 ActivatedAbilityPatronGazeResolveBehavior = RegisterGameType("ActivatedAbilityPatronGazeResolveBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityPatronGazeResolveBehavior.summary = "Patron's Gaze Risk Resolve"

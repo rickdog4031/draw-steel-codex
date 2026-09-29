@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 --- One shared panel for the whole table: roles differ only in which controls
 --- are live. This is the feature's entire voice, so nothing here goes to chat.
 --- @class FSHPanel: GameType
+--- @field new fun(o?: table): FSHPanel
 FSHPanel = RegisterGameType("FSHPanel")
 
 --- Builds dropdown options from a list of DTConstant instances

@@ -1,5 +1,6 @@
 --- Manages state for the character builder
 --- @class CharacterBuilderState: GameType
+--- @field new fun(o?: table): CharacterBuilderState
 --- @field data table The root data table containing all state
 local CharacterBuilderState = RegisterGameType("CharacterBuilderState")
 

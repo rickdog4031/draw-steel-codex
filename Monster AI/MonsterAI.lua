@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 ---@class MonsterAI: GameType
+--- @field new fun(o?: table): MonsterAI
 MonsterAI = RegisterGameType("MonsterAI")
 MonsterAI.moves = {} --a table of registered moves the ai can choose from.
 MonsterAI.prompts = {} --a table of prompted abilities the ai knows how to use.

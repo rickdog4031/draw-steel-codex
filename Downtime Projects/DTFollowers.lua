@@ -1,5 +1,6 @@
 --- Downtime followers information - abstraction of character.followers
 --- @class DTFollowers: GameType
+--- @field new fun(o?: table): DTFollowers
 --- @field followers table List of followers as class objects
 --- @field creature Creature The creature that owns these followers
 DTFollowers = RegisterGameType("DTFollowers")

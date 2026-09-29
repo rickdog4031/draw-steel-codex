@@ -2,6 +2,7 @@
     Styles for Character Builder
 ]]
 --- @class CBStyles: GameType
+--- @field new fun(o?: table): CBStyles
 CBStyles = RegisterGameType("CBStyles")
 
 --- Set this to true to draw layout helper borders around panels that have none

@@ -2,7 +2,9 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class WeaponProperty: GameType
---- @field tableName string Data table name ("weaponProperties").
+--- @field new fun(o?: table): WeaponProperty
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
+--- @field tableName "weaponProperties" Data table name ("weaponProperties").
 --- @field name string Display name.
 --- @field details string Rules text describing this property.
 --- @field hasValue boolean If true, this property carries a numeric value when applied to equipment.

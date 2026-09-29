@@ -24,6 +24,7 @@ local function GetSheet(component)
 end
 
 --- @class loot: GameType
+--- @field new fun(o?: table): loot
 --- @field inventory table<string, table> Map of item id to inventory entry.
 --- @field isLoot boolean Always true for loot objects; distinguishes from full creature objects.
 --- @field discount number Percentage discount applied to item prices when purchasing (0-100).
@@ -813,6 +814,7 @@ creature.RollLoot = loot.RollLoot
 
 
 --- @class ObjectComponentText: GameType
+--- @field new fun(o?: table): ObjectComponentText
 --- A map-object component that displays a text label rendered on the canvas via a game sheet.
 ObjectComponentText = RegisterGameType("ObjectComponentText")
 

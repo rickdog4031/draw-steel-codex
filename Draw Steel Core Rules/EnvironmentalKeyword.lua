@@ -10,9 +10,11 @@ local mod = dmhub.GetModLoading()
 --is the same relationship CharacterCondition has with CharacterFeature.
 
 --- @class EnvironmentalKeyword:CharacterFeature
+--- @field new fun(o?: table): EnvironmentalKeyword
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of the keyword (e.g. "Dark", "Lava"). Class default "New Environmental Keyword" applies when absent.
 --- @field description string Rules text shown to players. Class default "" applies when absent.
---- @field tableName string Name of the data table this keyword is stored in ("environmentalKeywords"). Class-level default; often absent on serialized instances.
+--- @field tableName "environmentalKeywords" Name of the data table this keyword is stored in ("environmentalKeywords"). Class-level default; often absent on serialized instances.
 --- @field source string Source label ("Environmental Keyword"). Class-level default; often absent on serialized instances.
 --- @field iconid string Icon shown in the UI. Class-level default applies when absent.
 --- @field display table Icon display settings (bgcolor/hueshift/saturation/brightness).
@@ -37,6 +39,8 @@ local mod = dmhub.GetModLoading()
 --- @field appearanceDefaultOff boolean|nil When true, new zones painted with this keyword from the Map Markup panel start with their visual representation hidden (record field hideAppearance; stripes only). Toggled by the "Visuals" pill on the zone palette chip. Only a DEFAULT stamped at paint time: each painted zone owns its own flag afterward (the Visuals badge on its zone-list row), so flipping this never disturbs existing zones. Only meaningful when appearance is set. No class default: absent = visuals shown.
 --- @field defaultPlayerVisible boolean|nil When false, new zones painted with this keyword from the Map Markup panel start hidden from players (record field playerVisible). Set by the "New Zones Visible to Players" check in the keyword editor. Only a DEFAULT stamped at paint time: each painted zone owns its own flag afterward (the Edit Zone dialog), so flipping this never disturbs existing zones. No class default: absent = visible.
 --- @field script string|nil Optional Lua zone-script source, edited in the Edit Script dialog. When set, one instance of the script runs on EVERY client for each zone of this keyword on the current map (Entire Map blankets included). The source must RETURN a table of handlers, all optional: create(zone), destroy(zone), locsChanged(zone), think(zone), and thinkInterval (seconds between think calls, default 1). destroy is guaranteed to run when the zone is de-instantiated: erased or deleted, its keyword deleted, the map changed, the script edited, or mods reloaded. If locsChanged is absent the script is restarted (destroy then create) whenever the zone's tiles change. The zone object passed to handlers carries zoneid/floorid/floorIndex/mapid, name, keyword (type name), keywordid, color, altitude, height (nil = unlimited), entireMap, locs (list of Loc userdata, ready for e.g. dmhub.CreateWorldDistortion), locsAndAdjacent (locs plus every tile 8-way adjacent to the zone; computed lazily on first read and refreshed when the zone's tiles change) and data (an empty scratch table for script state). No class default: absent = no script.
+--- @field entryEffectRule string|nil A rules-engine rule string (the same syntax as a power table tier, e.g. "3 fire damage; burning (save ends)") applied, with no roll, to any creature entering the area or starting its turn there. Same field name as Aura; copied onto zone auras (Aura:GetSimpleEntryEffectTrigger). Never applies to adjacent-only contact. No class default: absent = no entry effect.
+--- @field mapFeature CharacterFeature|nil Map-wide features: modifiers granted to every creature on a map that has at least one zone of this keyword, anywhere on any floor (e.g. a trap's "Allied Awareness" ability). Each modifier's own filter decides which creatures take it. A player-controlled creature only counts zones that are visible to players, so a concealed trap never tips off the heroes. No class default: absent = none.
 --- @field mapid string|nil When set, this keyword is a map-scoped zone type: it was created from that map's Zone Types palette and is hidden from the compendium, other maps' palettes, and keyword dropdowns until promoted ("Make Available to All Maps" clears the field). No class default: absent = a full keyword.
 EnvironmentalKeyword = RegisterGameType("EnvironmentalKeyword", "CharacterFeature")
 
@@ -203,6 +207,16 @@ function EnvironmentalKeyword.ApplyToAura(auraDef, keywordid)
 				auraDef.powerRollBonus = keyword:try_get("powerRollBonus", 0)
 				auraDef.powerRollTiers = dmhub.DeepCopy(tiers)
 			end
+		end
+	end)
+
+	--Flat effect on creatures entering the area or starting a turn in it
+	--(creature:EnterAura -> Aura:GetSimpleEntryEffectTrigger). Skipped when the
+	--aura already has its own.
+	pcall(function()
+		local rule = keyword:try_get("entryEffectRule", "")
+		if type(rule) == "string" and trim(rule) ~= "" and trim(auraDef:try_get("entryEffectRule", "") or "") == "" then
+			auraDef.entryEffectRule = rule
 		end
 	end)
 
@@ -1793,7 +1807,7 @@ end
 
 local SetData = function(tableName, keywordPanel, keyid)
 	local dataTable = dmhub.GetTable(tableName) or {}
-	local keyword = dataTable[keyid]
+	local keyword = dataTable[keyid] --[[@as EnvironmentalKeyword]]
 
 	--guard: the id may be stale (e.g. an old palette entry stranded on an id
 	--that is not in the table). Leave the panel as-is rather than erroring.
@@ -2464,6 +2478,46 @@ local SetData = function(tableName, keywordPanel, keyid)
 		},
 	}
 
+	--optional flat effect (no roll) applied to any creature that enters the area
+	--or starts its turn there. Uses the power table rule syntax; the preview
+	--below dims anything the rules engine would not understand.
+	local entryEffectPreview = gui.Label{
+		classes = {"formStacked"},
+		width = "100%",
+		height = "auto",
+		fontSize = 14,
+		text = ActivatedAbilityDrawSteelCommandBehavior.FormatRuleValidation(keyword:try_get("entryEffectRule", "") or ""),
+	}
+	children[#children+1] = gui.Panel{
+		classes = {"formStackedRow"},
+		gui.Label{
+			classes = {"formStacked"},
+			text = "Effect on Enter:",
+			hover = gui.Tooltip("Optional. A rule applied with no roll to any creature that enters the area or starts its turn there, written like a power table tier (e.g. 3 fire damage; burning (save ends)). Leave empty for none."),
+		},
+		gui.Input{
+			classes = {"formStacked"},
+			width = "100%",
+			text = keyword:try_get("entryEffectRule", "") or "",
+			placeholderText = "e.g. 3 fire damage; burning (save ends)",
+			characterLimit = 200,
+			edit = function(element)
+				entryEffectPreview.text = ActivatedAbilityDrawSteelCommandBehavior.FormatRuleValidation(element.text)
+			end,
+			change = function(element)
+				local text = trim(element.text)
+				if text == "" then
+					keyword.entryEffectRule = nil
+				else
+					keyword.entryEffectRule = text
+				end
+				entryEffectPreview.text = ActivatedAbilityDrawSteelCommandBehavior.FormatRuleValidation(text)
+				UploadKeyword()
+			end,
+		},
+		entryEffectPreview,
+	}
+
 	--list of modifiers that this keyword applies to affected creatures.
 	children[#children+1] = gui.Panel{
 		width = 800,
@@ -2485,6 +2539,51 @@ local SetData = function(tableName, keywordPanel, keyid)
 		},
 
 		keyword:EditorPanel{
+			noscroll = true,
+			modifierRefreshed = function(element)
+				UploadKeyword()
+			end,
+		},
+	}
+
+	--map-wide features: modifiers granted to every creature on a map that has a
+	--zone of this keyword (e.g. a trap's Allied Awareness ability). The feature
+	--object is created on first edit so untouched keywords stay lean.
+	if keyword:try_get("mapFeature") == nil then
+		keyword.mapFeature = CharacterFeature.Create{
+			name = keyword.name,
+			source = "Environmental Keyword",
+		}
+	end
+	children[#children+1] = gui.Label{
+		classes = {"formStacked"},
+		width = "auto",
+		height = "auto",
+		fontSize = 18,
+		bold = true,
+		text = "Map-Wide Features",
+		hover = gui.Tooltip("Granted to every creature on a map that has at least one zone of this type, not just creatures inside it. Use each modifier's filter to pick who gets it (e.g. not Hero). Heroes and other player-controlled creatures only count zones that players can see."),
+	}
+	children[#children+1] = gui.Panel{
+		width = 800,
+		height = "auto",
+		halign = "left",
+		styles = {
+			{
+				selectors = {"namePanel"},
+				collapsed = 1,
+			},
+			{
+				selectors = {"sourcePanel"},
+				collapsed = 1,
+			},
+			{
+				selectors = {"descriptionPanel"},
+				collapsed = 1,
+			},
+		},
+
+		keyword.mapFeature:EditorPanel{
 			noscroll = true,
 			modifierRefreshed = function(element)
 				UploadKeyword()
@@ -2841,6 +2940,149 @@ GameSystem.RegisterGoblinScriptField{
 		end
 
 		return false
+	end,
+}
+
+EnvironmentalKeyword.AuraInstancesCoveringSquare = AuraInstancesCoveringSquare
+
+--- Returns the keyword ids (environmentalKeywords keys) of the map zones
+--- covering any square the token occupies or any square 8-adjacent to one, as a
+--- set {keywordid = true}. Squares are band-tested at their ground altitude.
+--- @param token CharacterToken
+--- @return table<string, boolean>
+function EnvironmentalKeyword.KeywordIdsAtOrAdjacentToToken(token)
+	local result = {}
+	if token == nil or not token.valid then
+		return result
+	end
+
+	local seenSquares = {}
+	for _,occupied in ipairs(token.locsOccupying or {}) do
+		for dy = -1,1 do
+			for dx = -1,1 do
+				local loc = occupied:dir(dx, dy)
+				local key = string.format("%d,%d,%d", loc.x, loc.y, loc.floor or 0)
+				if seenSquares[key] == nil then
+					seenSquares[key] = true
+					for _,instance in ipairs(AuraInstancesCoveringSquare(loc)) do
+						local auraDef = instance:try_get("aura")
+						local keywordid = auraDef ~= nil and auraDef:try_get("environmentalKeywordId") or nil
+						if keywordid ~= nil then
+							result[keywordid] = true
+						end
+					end
+				end
+			end
+		end
+	end
+	return result
+end
+
+creature.RegisterSymbol {
+	symbol = "adjacentenvironment",
+	lookup = function(c)
+		local result = {}
+		local token = dmhub.LookupToken(c)
+		if token == nil then
+			return StringSet.new{ strings = result }
+		end
+
+		local keywordsTable = dmhub.GetTable(EnvironmentalKeyword.tableName) or {}
+		local seenNames = {}
+		for keywordid,_ in pairs(EnvironmentalKeyword.KeywordIdsAtOrAdjacentToToken(token)) do
+			local keyword = keywordsTable[keywordid]
+			if keyword ~= nil and (not keyword:try_get("hidden", false)) then
+				local name = keyword.name
+				if name ~= nil and seenNames[string.lower(name)] == nil then
+					seenNames[string.lower(name)] = true
+					result[#result+1] = name
+				end
+			end
+		end
+
+		return StringSet.new{ strings = result }
+	end,
+	help = {
+		name = "Adjacent Environment",
+		type = "set",
+		desc = "The names of the Environmental Keywords of the map zones the creature is inside or adjacent to (any of the 8 surrounding squares). Use it for things a creature can do next to a zone, like deactivating a trap.",
+		seealso = {"Environment"},
+		examples = {"AdjacentEnvironment has \"Flammable Oil\""},
+	},
+}
+
+--------------------------------------------------------------------------------
+-- Map-wide features.
+--
+-- A keyword's mapFeature holds modifiers granted to every creature on a map
+-- that has at least one zone of the keyword, wherever the creature stands (a
+-- trap's "Allied Awareness" torch, a "Deactivate" maneuver). Each modifier's
+-- own filter picks who gets it. A player-controlled creature only counts zones
+-- visible to players, so concealed traps stay secret from the heroes.
+--------------------------------------------------------------------------------
+
+--cache of the keywords present on the current map, rebuilt when the map or
+--any zone record changes. anyZone = some zone exists; visibleZone = some zone
+--of that keyword is visible to players.
+local g_mapKeywordCache = { mapid = nil, seq = nil, keywords = {} }
+
+local function KeywordsOnCurrentMap()
+	local mapid = game.currentMapId
+	local seq = dmhub.markupZonesSeq
+	if g_mapKeywordCache.mapid == mapid and g_mapKeywordCache.seq == seq then
+		return g_mapKeywordCache.keywords
+	end
+
+	local keywords = {}
+	local map = game.currentMap
+	if map ~= nil then
+		for _,floor in ipairs(map.floors) do
+			for _,record in pairs(floor.markupZones or {}) do
+				if record.category == nil and record.keyword ~= nil and #(record.locs or {}) > 0 then
+					local entry = keywords[record.keyword]
+					if entry == nil then
+						entry = { anyZone = true, visibleZone = false }
+						keywords[record.keyword] = entry
+					end
+					if record.playerVisible ~= false then
+						entry.visibleZone = true
+					end
+				end
+			end
+		end
+	end
+
+	g_mapKeywordCache = { mapid = mapid, seq = seq, keywords = keywords }
+	return keywords
+end
+
+creature.RegisterFeatureCalculation{
+	id = "environmentalKeywordMapFeatures",
+	FillFeatures = function(c, result)
+		local present = KeywordsOnCurrentMap()
+		if next(present) == nil then
+			return
+		end
+
+		--only creatures actually standing on this map get map features.
+		local token = dmhub.LookupToken(c)
+		if token == nil or not token.valid then
+			return
+		end
+
+		local playerSide = token.playerControlled
+		local keywordsTable = dmhub.GetTable(EnvironmentalKeyword.tableName) or {}
+		for keywordid,info in pairs(present) do
+			if info.visibleZone or not playerSide then
+				local keyword = keywordsTable[keywordid]
+				if keyword ~= nil and (not keyword:try_get("hidden", false)) then
+					local feature = keyword:try_get("mapFeature")
+					if feature ~= nil and #feature.modifiers > 0 then
+						result[#result+1] = feature
+					end
+				end
+			end
+		end
 	end,
 }
 

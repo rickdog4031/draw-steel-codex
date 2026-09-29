@@ -1,6 +1,7 @@
 --- Project shares manager for downtime system configuration
 --- Handles document-based storage of global downtime project shares
 --- @class DTShares: GameType
+--- @field new fun(o?: table): DTShares
 --- @field mod table The Codex mod loading instance
 --- @field documentName string The name of the document used for project shares storage
 DTShares = RegisterGameType("DTShares")

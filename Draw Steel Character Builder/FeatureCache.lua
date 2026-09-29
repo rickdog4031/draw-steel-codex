@@ -3,10 +3,13 @@
     to support the builder
 ]]
 --- @class CBFeatureCache: GameType
+--- @field new fun(o?: table): CBFeatureCache
 CBFeatureCache = RegisterGameType("CBFeatureCache")
 --- @class CBFeatureWrapper: GameType
+--- @field new fun(o?: table): CBFeatureWrapper
 CBFeatureWrapper = RegisterGameType("CBFeatureWrapper")
 --- @class CBOptionWrapper: GameType
+--- @field new fun(o?: table): CBOptionWrapper
 CBOptionWrapper = RegisterGameType("CBOptionWrapper")
 
 local _formatOrder = CharacterBuilder._formatOrder

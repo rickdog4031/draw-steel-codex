@@ -1763,6 +1763,11 @@ TriggeredAbility.RegisterTrigger{
             type = "ability",
             desc = "The ability used for the Power Roll.",
         },
+        {
+            name = "Hero Token Reroll",
+            type = "boolean",
+            desc = "True if a Hero Token was spent to re-roll this test.",
+        },
     }
 }
 

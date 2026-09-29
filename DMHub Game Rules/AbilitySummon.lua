@@ -3,6 +3,7 @@ local mod = dmhub.GetModLoading()
 --this file implements summoning behavior for abilities.
 
 --- @class ActivatedAbilitySummonBehavior : ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilitySummonBehavior
 ActivatedAbilitySummonBehavior = RegisterGameType("ActivatedAbilitySummonBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

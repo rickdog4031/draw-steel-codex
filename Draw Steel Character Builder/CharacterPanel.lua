@@ -3,6 +3,7 @@
     The right-side status panel
 ]]
 --- @class CBCharPanel: GameType
+--- @field new fun(o?: table): CBCharPanel
 CBCharPanel = RegisterGameType("CBCharPanel")
 
 local _blankToDashes = CharacterBuilder._blankToDashes

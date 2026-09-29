@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterSkillChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterSkillChoice
 --- @field name string Display name ("Skill").
 --- @field description string Prompt shown to the player.
 --- @field categories string[] Skill category ids to filter available skills; empty means all categories.

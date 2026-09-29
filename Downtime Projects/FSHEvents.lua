@@ -6,6 +6,7 @@ local mod = dmhub.GetModLoading()
 --- applied and what a human still has to run: several of these results are
 --- fiction the Director adjudicates, not mechanics.
 --- @class FSHEvents: GameType
+--- @field new fun(o?: table): FSHEvents
 FSHEvents = RegisterGameType("FSHEvents")
 
 --- How a result is handled.

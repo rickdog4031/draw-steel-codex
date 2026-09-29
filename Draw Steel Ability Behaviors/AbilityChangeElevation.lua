@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityChangeElevationBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityChangeElevationBehavior
 ActivatedAbilityChangeElevationBehavior = RegisterGameType("ActivatedAbilityChangeElevationBehavior", "ActivatedAbilityBehavior")
 
 

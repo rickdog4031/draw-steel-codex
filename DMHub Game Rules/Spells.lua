@@ -4,12 +4,16 @@ local mod = dmhub.GetModLoading()
 --build on many things from that ActivatedAbility file.
 
 --- @class Spell:ActivatedAbility
+--- @field new fun(o?: table): Spell
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- An ActivatedAbility variant that represents a castable spell, with spell level and slot tracking.
 Spell = RegisterGameType("Spell", "ActivatedAbility")
 
 --- @class SpellList: GameType
+--- @field new fun(o?: table): SpellList
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field hidden boolean If true, this list is not shown in UI menus.
---- @field tableName string Data table name ("SpellLists").
+--- @field tableName "SpellLists" Data table name ("SpellLists").
 --- @field name string Display name.
 --- @field spells table<string, boolean> Set of spell ids included in this list.
 --- A named collection of spell ids that can be assigned to spellcasting classes.

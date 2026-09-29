@@ -214,6 +214,12 @@ run (~3.5 min) before committing -- only the full run catches an edit that break
 in a file you did not change. Do not use `-Target` on a subdirectory: that loses the
 workspace and reports everything defined elsewhere as undefined.
 
+A Claude Code Stop hook (`../.claude/settings.json` -> `tools/lua-typing/claude_hook.py`)
+runs the per-file check on every codex `.lua` file the session edited with Edit/Write when
+you try to finish, and blocks the stop with the offending lines if one is over its
+ceiling. Treat that as a failing test: fix the problems it lists. It does not see edits
+made through Bash (sed, scripts), and it is not the full run.
+
 The ceiling has slack in it because LuaLS is not deterministic here (the same code checks
 to a number ~12 wide), so do not read small count changes as signal in either direction.
 
@@ -222,6 +228,14 @@ further. If your change genuinely improves a file, re-record with `-UpdateBaseli
 say so in the commit message. See [`LUA_TYPING_REFERENCE.md`](../LUA_TYPING_REFERENCE.md)
 for the annotation conventions that keep new code clean -- `@cast` in event handlers,
 typed locals for `panel.data`, `core.Vector2` on property writes.
+
+Game types and data-table rows are typed at the root: `X.new{...}` returns an `X` (every
+`@class` carries `--- @field new fun(o?: table): X`; `annotate_gametypes.py` adds it to a
+new registration), and `dmhub.GetTable(X.tableName)` / `GetTableCached` return rows typed
+`X`. After adding or renaming an `X.tableName = "..."`, run
+`python ../tools/lua-typing/gen_table_overloads.py` (from the codex root). When the table
+name is a variable, cast the row where it comes out:
+`local class = classTable[classid] --[[@as Class]]` (inline `@as`, not `---@type`).
 
 **ASCII only.** The DMHub Lua runtime does not handle non-ASCII characters in source files. All Lua files — including comments and EmmyLua annotations — must contain only ASCII characters (bytes 0-127). Never use em dashes, curly quotes, ellipses, or any other Unicode punctuation. Use plain ASCII equivalents instead: `-` or `:` instead of em dashes, `"` instead of curly quotes, `...` instead of ellipses.
 

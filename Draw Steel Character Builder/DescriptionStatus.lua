@@ -5,6 +5,7 @@
     to count filled description fields instead of using FeatureCache.
 ]]
 --- @class CBDescriptionStatus: CBSelectionStatus
+--- @field new fun(o?: table): CBDescriptionStatus
 CBDescriptionStatus = RegisterGameType("CBDescriptionStatus", "CBSelectionStatus")
 
 --- Override CreateNew to return CBDescriptionStatus instance (not parent)

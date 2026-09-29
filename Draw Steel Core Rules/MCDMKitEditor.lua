@@ -2,7 +2,7 @@ local mod = dmhub.GetModLoading()
 
 local SetKit = function(tableName, kitPanel, kitid)
 	local kitTable = dmhub.GetTable(tableName) or {}
-	local kit = kitTable[kitid]
+	local kit = kitTable[kitid] --[[@as Kit]]
 	local UploadKit = function()
 		dmhub.SetAndUploadTableItem(tableName, kit)
 	end

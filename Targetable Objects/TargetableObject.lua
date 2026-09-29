@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class TargetableObject : creature
+--- @field new fun(o?: table): TargetableObject
 TargetableObject = RegisterGameType("TargetableObject", "creature")
 TargetableObject.resourceid = CharacterResource.maliceResourceId
 

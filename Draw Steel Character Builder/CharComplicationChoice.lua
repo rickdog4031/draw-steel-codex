@@ -5,6 +5,7 @@
     for purposes of the character builder.
 ]]
 --- @class CharacterComplicationChoice: CharacterChoice
+--- @field new fun(o?: table): CharacterComplicationChoice
 CharacterComplicationChoice = RegisterGameType("CharacterComplicationChoice", "CharacterChoice")
 
 CharacterComplicationChoice.description = "Complication Choice"

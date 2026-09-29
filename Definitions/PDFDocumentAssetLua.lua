@@ -22,5 +22,9 @@ function PDFDocumentAssetLua:HaveReadPermissions() end
 --- @return boolean
 function PDFDocumentAssetLua:HaveEditPermissions() end
 
+--- SaveToDisk: Opens a system save dialog and copies this PDF to the chosen path, downloading it first if this machine does not have it yet. options.filename is the default filename (defaults to the description plus .pdf). options.callback is called with the saved path, or nil if the user canceled or the copy failed.
+--- @param options nil|{filename: nil|string, callback: nil|fun(path: nil|string)}
+function PDFDocumentAssetLua:SaveToDisk(options) end
+
 --- Upload
 function PDFDocumentAssetLua:Upload() end

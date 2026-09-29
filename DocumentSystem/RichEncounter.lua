@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 
 ---@class RichEncounter: RichTag
+--- @field new fun(o?: table): RichEncounter
 RichEncounter = RegisterGameType("RichEncounter", "RichTag")
 RichEncounter.tag = "encounter"
 

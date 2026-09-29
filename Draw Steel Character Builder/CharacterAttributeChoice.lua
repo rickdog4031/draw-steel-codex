@@ -5,6 +5,7 @@
     feature choice for purposes of the character builder.
 ]]
 --- @class CharacterCharacteristicChoice: CharacterChoice
+--- @field new fun(o?: table): CharacterCharacteristicChoice
 CharacterCharacteristicChoice = RegisterGameType("CharacterCharacteristicChoice", "CharacterChoice")
 
 --- Construct from a class

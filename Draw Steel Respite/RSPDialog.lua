@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 --- Assembles the Respite wizards and puts them on the Game menu.
 --- @class RSPDialog: GameType
+--- @field new fun(o?: table): RSPDialog
 RSPDialog = RegisterGameType("RSPDialog")
 
 --- The Director's wizard. Every step it knows about is handed to the shell,

@@ -108,6 +108,7 @@ end
 
 
 --- @class ExtChatMessage: GameType
+--- @field new fun(o?: table): ExtChatMessage
 --- ExtChatMessage game type registration for simple text output to chat.
 -- Used to display messages in the chat pane.
 ExtChatMessage = RegisterGameType("ExtChatMessage")

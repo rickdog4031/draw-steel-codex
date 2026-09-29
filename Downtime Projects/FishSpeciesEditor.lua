@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 --- Shows one water type at a time with entries grouped under their size band,
 --- which is how species are actually reasoned about when authoring them.
 --- @class FishSpeciesEditor: GameType
+--- @field new fun(o?: table): FishSpeciesEditor
 FishSpeciesEditor = RegisterGameType("FishSpeciesEditor")
 
 --- Phosphor families offered by the icon picker.

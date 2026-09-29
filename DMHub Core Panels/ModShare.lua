@@ -1,5 +1,69 @@
 local mod = dmhub.GetModLoading()
 
+-- Favorite modules: a per-account set of module ids the user has starred in
+-- the module browser's detail page. The "Create New Campaign" screen
+-- (CodexTitlescreen.CreateGameDialog) offers every favorite as an adventure
+-- cover the new game can install, next to the built-in Draw Steel
+-- adventures. Account storage so the list follows the user across machines.
+-- No editor: the star is the only UI.
+local g_favoriteModulesSetting = setting{
+	id = "favoritemodules",
+	description = "Favorite Modules",
+	storage = "account",
+	default = {},
+}
+
+--Shared with the titlescreen (a different file, same core codex). Read it
+--with rawget(_G, "ModuleFavorites") from anything that may load first.
+ModuleFavorites = {
+	--The favorite module ids as a fresh set {id = true}. Never returns the
+	--stored table itself, so callers can mutate the result freely.
+	Get = function()
+		local result = {}
+		local stored = g_favoriteModulesSetting:Get()
+		if type(stored) == "table" then
+			for k, v in pairs(stored) do
+				if v and type(k) == "string" then
+					result[k] = true
+				end
+			end
+		end
+		return result
+	end,
+
+	--The favorite module ids as a sorted list, for stable display order.
+	List = function()
+		local result = {}
+		for k, _ in pairs(ModuleFavorites.Get()) do
+			result[#result + 1] = k
+		end
+		table.sort(result)
+		return result
+	end,
+
+	Is = function(moduleid)
+		return moduleid ~= nil and ModuleFavorites.Get()[moduleid] == true
+	end,
+
+	Set = function(moduleid, favorite)
+		if moduleid == nil or moduleid == "" then
+			return
+		end
+		local current = ModuleFavorites.Get()
+		if favorite then
+			current[moduleid] = true
+		else
+			current[moduleid] = nil
+		end
+		--Set a fresh table: the setting layer compares by identity.
+		g_favoriteModulesSetting:Set(current)
+	end,
+
+	Toggle = function(moduleid)
+		ModuleFavorites.Set(moduleid, not ModuleFavorites.Is(moduleid))
+	end,
+}
+
 -- Local style pack passed to every gui.Check{styles = g_CheckboxStyles,} in this file via its
 -- `styles` property. Hardcoded values from the default scheme so the
 -- checkbox visuals paint regardless of what (legacy or theme) cascade
@@ -4653,6 +4717,78 @@ mod.shared.ShowDownloadShareDialog = function(options)
 		upvoteCountIcon,
 	}
 
+	--Favorite star: marks the module as one the "Create New Campaign" screen
+	--should offer as an adventure to install into a new game (see
+	--ModuleFavorites at the top of this file). Per account, so it is
+	--meaningful for any published module, ours included.
+	local favoriteLabel = gui.Label{
+		fontSize = 16,
+		width = "auto",
+		height = "auto",
+		hmargin = 6,
+		valign = "center",
+		text = "Favorite",
+	}
+
+	local favoriteIcon = gui.Panel{
+		classes = {"iconButton", "favoriteStar"},
+		width = 40,
+		height = 40,
+		halign = "right",
+		bgimage = "ui-icons/ph-star-fill.png",
+		styles = {
+			{
+				selectors = {"favoriteStar"},
+				bgcolor = "#777777",
+			},
+			{
+				selectors = {"favoriteStar", "hover"},
+				bgcolor = "#bbbbbb",
+			},
+			{
+				selectors = {"favoriteStar", "favorited"},
+				bgcolor = "#f0c860",
+			},
+			{
+				selectors = {"favoriteStar", "favorited", "hover"},
+				bgcolor = "#ffe08a",
+			},
+		},
+		linger = function(element)
+			local text
+			if element:HasClass("favorited") then
+				text = "A favorite: offered as an adventure to add when you create a new campaign. Press to remove."
+			else
+				text = "Favorite this module to offer it as an adventure to add when you create a new campaign."
+			end
+			gui.Tooltip(text)(element)
+		end,
+
+		refreshFavorite = function(element)
+			local moduleInfo = moduleDetailedDisplay.data.moduleInfo
+			element:SetClass("favorited", moduleInfo ~= nil and ModuleFavorites.Is(moduleInfo.fullid))
+		end,
+
+		press = function(element)
+			local moduleInfo = moduleDetailedDisplay.data.moduleInfo
+			if moduleInfo == nil then
+				return
+			end
+			ModuleFavorites.Toggle(moduleInfo.fullid)
+			element:FireEvent("refreshFavorite")
+		end,
+	}
+
+	local favoritePanel = gui.Panel{
+		width = "auto",
+		height = "auto",
+		flow = "horizontal",
+		halign = "right",
+		vmargin = 4,
+		favoriteLabel,
+		favoriteIcon,
+	}
+
 	local statsPanel = gui.Panel{
 		classes = {"hidden"},
 		floating = true,
@@ -4665,6 +4801,7 @@ mod.shared.ShowDownloadShareDialog = function(options)
 
 		installCountPanel,
 		upvoteCountPanel,
+		favoritePanel,
 	}
 
 	local m_moduleErrors = {}
@@ -5305,6 +5442,7 @@ mod.shared.ShowDownloadShareDialog = function(options)
 					upvoteCountLabel.text = string.format("%d", stats.votes+1)
 
 					upvoteCountIcon:FireEvent("refreshUpvote")
+					favoriteIcon:FireEvent("refreshFavorite")
 				end
 			end)
 		end,

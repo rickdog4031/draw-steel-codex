@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityCreateItemBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityCreateItemBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field itemid string Id of the equipment item to create ("none" if unset).
 --- @field quantity string|number|table Number of items to create (can be a dice expression).

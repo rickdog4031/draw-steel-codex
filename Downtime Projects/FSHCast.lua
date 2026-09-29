@@ -5,6 +5,7 @@ local mod = dmhub.GetModLoading()
 --- any requested roll takes, so the player rolls in the normal dialog and hero
 --- token rerolls work without the module doing anything.
 --- @class FSHCast: GameType
+--- @field new fun(o?: table): FSHCast
 FSHCast = RegisterGameType("FSHCast")
 
 --- A final total at or below this is the one that got away.

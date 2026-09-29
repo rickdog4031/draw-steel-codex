@@ -12,6 +12,7 @@ local function track(eventType, fields)
 end
 
 --- @class follower:monster
+--- @field new fun(o?: table): follower
 --- @field availableRolls number Number of rolls this follower has available.
 --- @field followerType string Follower sub-type: "artisan", "sage", or "retainer".
 --- @field role string Role tag, always "follower".

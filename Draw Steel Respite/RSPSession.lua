@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 --- One character's standing in a Respite.
 --- @class RSPCharacter: GameType
+--- @field new fun(o?: table): RSPCharacter
 --- @field participating boolean
 RSPCharacter = RegisterGameType("RSPCharacter")
 
@@ -17,6 +18,7 @@ end
 --- Director and every player read and write one instance. No panel keeps a
 --- copy: the document is the model and the panels are the view.
 --- @class RSPSession: GameType
+--- @field new fun(o?: table): RSPSession
 --- @field id string
 --- @field phase string
 --- @field daysElapsed number

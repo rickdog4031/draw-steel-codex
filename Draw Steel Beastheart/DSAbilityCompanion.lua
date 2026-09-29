@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilitySummonCompanionBehavior : ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilitySummonCompanionBehavior
 ActivatedAbilitySummonCompanionBehavior = RegisterGameType("ActivatedAbilitySummonCompanionBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

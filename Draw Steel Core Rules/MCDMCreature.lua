@@ -4990,6 +4990,7 @@ function creature:ShowCharacteristicRollDialog(attrid)
                     highroll = highroll,
                     lowroll = lowroll,
                     ability = syntheticAbility,
+                    herotokenreroll = CharacterResource.RollUsedHeroTokenReroll(rollInfo),
                 })
             end,
 
@@ -5190,6 +5191,7 @@ end
 -- description. Purpose is to communicate to all players WHY the damage was reduced or
 -- increased and where to look for it.
 --- @class DamageModifierChatMessage: GameType
+--- @field new fun(o?: table): DamageModifierChatMessage
 DamageModifierChatMessage = RegisterGameType("DamageModifierChatMessage")
 DamageModifierChatMessage.victimid = ""
 DamageModifierChatMessage.attackerid = ""

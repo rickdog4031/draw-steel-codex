@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityCustomTriggerBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityCustomTriggerBehavior
 --- @field summary string Short label shown in behavior lists.
 ActivatedAbilityCustomTriggerBehavior = RegisterGameType("ActivatedAbilityCustomTriggerBehavior", "ActivatedAbilityBehavior")
 

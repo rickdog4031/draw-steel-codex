@@ -117,6 +117,7 @@ end
 --- resolves the stop by setting the next milestone and putting the project
 --- back to work.
 --- @class DTEventRollDialog: GameType
+--- @field new fun(o?: table): DTEventRollDialog
 DTEventRollDialog = RegisterGameType("DTEventRollDialog")
 
 local WIDTH = 560

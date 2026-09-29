@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class ActivatedAbilityModifyPowerRollBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityModifyPowerRollBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field guid string Unique identifier.
 --- @field modifier CharacterModifier The CharacterModifier (behavior="power") applied during the roll.

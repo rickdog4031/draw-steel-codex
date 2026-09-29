@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityPayAbilityCostBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityPayAbilityCostBehavior
 ActivatedAbilityPayAbilityCostBehavior = RegisterGameType("ActivatedAbilityPayAbilityCostBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

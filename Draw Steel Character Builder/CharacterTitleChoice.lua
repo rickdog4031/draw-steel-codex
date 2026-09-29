@@ -7,6 +7,7 @@ local mod = dmhub.GetModLoading()
     for purposes of the character builder.
 ]]
 --- @class CharacterTitleChoice: CharacterChoice
+--- @field new fun(o?: table): CharacterTitleChoice
 CharacterTitleChoice = RegisterGameType("CharacterTitleChoice", "CharacterChoice")
 
 CharacterTitleChoice.description = "Title Choice"

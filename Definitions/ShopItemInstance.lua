@@ -3,7 +3,6 @@
 --- Represents an instance of a purchased shop item in a user's inventory.
 --- @class ShopItemInstance
 --- @field shopItem any The underlying ShopItem definition for this instance.
---- @field autoInstall boolean Whether this module auto-installs. Only applies to Module type items.
 --- @field itemid string The shop item identifier.
 --- @field ctime number The creation/purchase timestamp.
 --- @field bundleid string

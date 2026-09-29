@@ -150,6 +150,7 @@ setting{
 --Keybinds.lua). Registered as a game type so it is a well-formed global namespace in every
 --load context (a bare global assignment trips the strict-global guard on some reload paths).
 --- @class FloorNavigation: GameType
+--- @field new fun(o?: table): FloorNavigation
 FloorNavigation = RegisterGameType("FloorNavigation")
 
 --The live Floors & Layers list panel, if one is open. The panel registers itself here when

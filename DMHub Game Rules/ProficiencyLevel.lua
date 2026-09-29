@@ -1,7 +1,9 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ProficiencyLevel: GameType
---- @field tableName string Data table name ("proficiencyLevel").
+--- @field new fun(o?: table): ProficiencyLevel
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
+--- @field tableName "proficiencyLevel" Data table name ("proficiencyLevel").
 --- @field name string Display label (e.g. "Trained", "Expert", "Not Proficient").
 --- @field value number Numeric proficiency bonus multiplier (0 = not proficient, 1 = trained, 2 = expert, etc.).
 --- Represents a tier of proficiency used to calculate skill and saving throw bonuses.

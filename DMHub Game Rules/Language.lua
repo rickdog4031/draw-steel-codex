@@ -4,6 +4,8 @@ local mod = dmhub.GetModLoading()
 --allows translating DMHub into other real-world languages).
 
 --- @class Language: GameType
+--- @field new fun(o?: table): Language
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name (e.g. "Elvish", "Common").
 --- @field type string Language type (e.g. "Standard", "Exotic", "Secret").
 --- @field speakers string Description of who speaks this language.
@@ -13,7 +15,7 @@ local mod = dmhub.GetModLoading()
 --- @field group string UI group label (e.g. "Custom", "Standard").
 --- @field commonality integer Commonality rating (higher = more common).
 --- @field dead boolean If true, this is a dead language not spoken by living creatures.
---- @field tableName string Data table name ("languages").
+--- @field tableName "languages" Data table name ("languages").
 Language = RegisterGameType("Language")
 
 --standard language fields.

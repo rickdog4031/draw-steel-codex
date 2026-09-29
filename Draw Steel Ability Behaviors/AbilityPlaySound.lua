@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityPlaySoundBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityPlaySoundBehavior
 ActivatedAbilityPlaySoundBehavior = RegisterGameType("ActivatedAbilityPlaySoundBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

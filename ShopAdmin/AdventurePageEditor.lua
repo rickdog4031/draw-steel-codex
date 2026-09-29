@@ -267,6 +267,7 @@ end
 --Builds the editor. It listens for the admin's `item` event (fired down the
 --item editor whenever an item is selected or changed).
 function AdventurePageEditor.Create()
+    ---@type ShopItemLua?
     local m_item = nil
     --the item whose page is loaded into m_cfg (m_item is merely the selection).
     local m_loadedItem = nil
@@ -1473,6 +1474,7 @@ function AdventurePageEditor.Create()
     local function CastRow(entry, index)
         local m_dims = nil
         local preview
+        ---@type boolean, Vector2?, {x: number, y: number}?
         local dragging, anchor, start = false, nil, nil
         preview = AdventurePage.MakeCastPortrait(g_castPreview, {
             bgimage = "panels/square.png",
@@ -1499,7 +1501,7 @@ function AdventurePageEditor.Create()
                 Save()
             end,
             think = function(element)
-                if not dragging then
+                if not dragging or anchor == nil or start == nil then
                     return
                 end
                 local mp = element.mousePoint

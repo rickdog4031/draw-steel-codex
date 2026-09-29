@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityManipulateTargetLocs:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityManipulateTargetLocs
 ActivatedAbilityManipulateTargetLocs = RegisterGameType("ActivatedAbilityManipulateTargetLocs", "ActivatedAbilityBehavior")
 
 ActivatedAbilityManipulateTargetLocs.summary = 'Manipulate Target Locations'

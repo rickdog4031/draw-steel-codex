@@ -20,8 +20,14 @@ firebase_admin is imported lazily so it need not even be installed.
 
 Consumer-owned triage state lives under a single root in the MCDM RTDB:
 
-  /BugReportTriage/issues/{threadId}   one node per distinct issue (Discord forum
-                                       thread). key == the Discord thread id.
+  /BugReportTriage/issues/{issueId}    one node per distinct issue. The key is NOT
+                                       a Discord thread id: since 2026-09-17 it is
+                                       the opening report's short id (`4MVBGBUG`,
+                                       `-2` on collision); before that it was the
+                                       thread id. Ask the node -- see issue_thread().
+      threadId   : the issue's Discord forum thread. Absent until somebody opens
+                   one, which is ordinary, not an error. Backfilled on the older
+                   thread-keyed issues, so this field answers for both eras.
       title      : short human title (also the forum post title)
       type       : bug | feature | feedback
       signature  : short stable dedupe key the agent assigns
@@ -35,19 +41,19 @@ Consumer-owned triage state lives under a single root in the MCDM RTDB:
       updated    : server ms
 
   /BugReports/{reportId}/status        set to "triaged" once folded into an issue
-  /BugReports/{reportId}/triage        { issueId: <threadId>, updated: server ms }
+  /BugReports/{reportId}/triage        { issueId: <issue key>, updated: server ms }
 
   /BugReportTriage/prs/{owner__repo__number}   one node per fix PR raised by a
                                        bug-fixer agent, so the merge poller
                                        (bug-report-check-prs.py) can close the
                                        issue out when the PR lands. Registered by
                                        bug-report-apply.py -- which is the only
-                                       point at which both the PR and its Discord
-                                       thread id are known.
+                                       point at which both the PR and its issue
+                                       are known.
       url        : the GitHub PR URL (also the source of owner/repo/number)
       repoLabel  : the fixer's repo handle ("codex" | "data")
       branch     : the triage/* branch backing the PR
-      issueId    : Discord thread the fix belongs to
+      issueId    : the issue registry key the fix belongs to (not a thread id)
       reportIds  : [reportId, ...] every report the fix closes out
       state      : open | merged | closed   (closed == rejected, not merged)
       closeout   : { tickets: { <reportId>: true }, discordAt: server ms }
@@ -423,6 +429,18 @@ def ticket_exists(uid, rid):
     return bool(ticket.get("exists"))
 
 
+def issue_thread(issue):
+    """The Discord thread id of an issue registry node, or None if it has none.
+
+    Never use the issue's KEY as a thread id: since 2026-09-17 the key is the
+    opening report's short id and a thread exists only once a human opens one.
+    `issue` is the node as bugs().report() returns it (data["issue"]); note its
+    `_threadId` is the Worker echoing the registry KEY back, not the thread.
+    """
+    tid = (issue or {}).get("threadId")
+    return tid if isinstance(tid, str) and tid else None
+
+
 # ---------------------------------------------------------------- fix PRs
 
 # RTDB keys may not contain . $ # [ ] or /, so a PR's identity is flattened with
@@ -736,12 +754,13 @@ class TicketsClient:
 DISCORD_COLOR_RESOLVED = 0x2ECC71  # green: resolved
 
 
-def discord_reply(cfg, thread_id, text, color=DISCORD_COLOR_RESOLVED, channel_key=None):
-    """Reply into an existing forum thread, through the dashboard.
+def discord_reply(cfg, issue_id, text, color=DISCORD_COLOR_RESOLVED, channel_key=None):
+    """Reply into an issue's forum thread, through the dashboard.
 
-    The Worker holds the webhooks and picks the right one from the thread's own
-    issue node -- bugs and other feedback live in different forums, and a
-    webhook is bound to one channel. `channel_key` is accepted for call
+    Takes the issue registry KEY, not a thread id: the Worker reads the issue
+    node for its `threadId` and forum, so a raw thread id of an issue created
+    since 2026-09-17 would not resolve. Check issue_thread() first -- an issue
+    with no thread comes back as a failure. `channel_key` is accepted for call
     compatibility and ignored: letting the caller name the channel would let it
     post into the wrong forum, so the server resolves it.
 
@@ -749,7 +768,7 @@ def discord_reply(cfg, thread_id, text, color=DISCORD_COLOR_RESOLVED, channel_ke
     old behaviour of a missing webhook in the local config.
     """
     out = bugs().post("discord-reply", {
-        "threadId": thread_id,
+        "issueId": issue_id,
         "text": text,
         "color": color,
     }, allow_status=(400, 502))
@@ -788,9 +807,10 @@ def discord_bot_token(cfg):
         return False
 
 
-def discord_archive_thread(cfg, thread_id):
-    """Archive a forum thread, through the dashboard. Returns (ok, detail);
-    never raises for the caller.
+def discord_archive_thread(cfg, issue_id):
+    """Archive an issue's forum thread, through the dashboard. Returns (ok,
+    detail); never raises for the caller. Takes the issue registry KEY, which
+    the Worker resolves to the thread, as discord_reply() does.
 
     Archive only, deliberately not locked: a reporter who answers "still broken"
     into an archived thread un-archives it by doing so, which is a free reopen
@@ -800,12 +820,12 @@ def discord_archive_thread(cfg, thread_id):
     is what would un-archive it again.
     """
     try:
-        out = bugs().post("discord-archive", {"threadId": thread_id},
+        out = bugs().post("discord-archive", {"issueId": issue_id},
                           allow_status=(400, 502))
     except Exception as e:
         return (False, str(e))
     if out.get("ok") and out.get("archived"):
-        return (True, out.get("detail") or "archived thread %s" % thread_id)
+        return (True, out.get("detail") or "archived the thread of issue %s" % issue_id)
     if out.get("ok"):
         # No bot token on the Worker: tidying was skipped, the closeout was not.
         return (None, out.get("detail") or "no bot token configured -- thread left open")

@@ -6,6 +6,7 @@ local mod = dmhub.GetModLoading()
 --to contain just one modifier.
 
 --- @class CharacterFeature: GameType
+--- @field new fun(o?: table): CharacterFeature
 --- @field guid nil|string Unique identifier for this feature instance.
 --- @field name nil|string Display name of the feature.
 --- @field source nil|string Human-readable source description (e.g. "Fighter", "Race Trait").

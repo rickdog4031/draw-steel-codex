@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class TriggeredAbilityDisplay: GameType
+--- @field new fun(o?: table): TriggeredAbilityDisplay
 --- @field guid string
 --- @field name string
 --- @field cost string

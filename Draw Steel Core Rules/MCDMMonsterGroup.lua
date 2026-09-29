@@ -1,8 +1,10 @@
 local mod = dmhub.GetModLoading()
 
 --- @class MonsterGroup: GameType
+--- @field new fun(o?: table): MonsterGroup
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name.
---- @field tableName string Data table name ("MonsterGroup").
+--- @field tableName "MonsterGroup" Data table name ("MonsterGroup").
 --- @field reach number Default reach in world units.
 --- @field size string Size code (e.g. "1M", "2L").
 --- @field weight number Weight category.
@@ -154,6 +156,7 @@ function MonsterGroup:Render(args, options)
 end
 
 --- @class MaliceAbility:ActivatedAbility
+--- @field new fun(o?: table): MaliceAbility
 MaliceAbility = RegisterGameType("MaliceAbility", "ActivatedAbility")
 
 MaliceAbility.categorization = "Malice"

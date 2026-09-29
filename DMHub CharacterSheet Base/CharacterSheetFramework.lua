@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharSheet: GameType
+--- @field new fun(o?: table): CharSheet
 CharSheet = RegisterGameType("CharSheet")
 
 CharSheet.defaultSheet = "Appearance"

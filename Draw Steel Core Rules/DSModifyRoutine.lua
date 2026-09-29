@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class RoutineDisplay: GameType
+--- @field new fun(o?: table): RoutineDisplay
 --- @field guid string
 --- @field keywords {string: boolean}
 --- @field name string

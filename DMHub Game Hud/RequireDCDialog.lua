@@ -18,6 +18,7 @@ local mod = dmhub.GetModLoading()
 --           specializations: if present, a {k -> true} map of specialization ID's for this check.
 --           forcedmodifiers: if present, forces a list of modifiers on character for roll 
 --- @class RollCheck: GameType
+--- @field new fun(o?: table): RollCheck
 RollCheck = RegisterGameType("RollCheck")
 
 --A RollRequest instance has the following fields:
@@ -25,6 +26,7 @@ RollCheck = RegisterGameType("RollCheck")
 -- tokens = map of token id -> result table. Result table begins empty and is filled by the target. May have a checks list which is a list of indexes into checks that are available to this token.
 -- contest = (optional) if true this is a contested roll between the tokens. The tokens map will have a "team" identifier to signal which side of the contest they are on.
 --- @class RollRequest: GameType
+--- @field new fun(o?: table): RollRequest
 RollRequest = RegisterGameType("RollRequest")
 
 RollCheck.consequences = ''

@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityDramaticBannerBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityDramaticBannerBehavior
 --- An ability behavior that displays a full-screen DramaticBanner centred
 --- on a token. The token is chosen with the standard "Apply To" field,
 --- and the banner shows the configured title and subtitle text.

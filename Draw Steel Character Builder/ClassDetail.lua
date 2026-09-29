@@ -2,6 +2,7 @@
     Class detail / selectors
 ]]
 --- @class CBClassDetail: GameType
+--- @field new fun(o?: table): CBClassDetail
 CBClassDetail = RegisterGameType("CBClassDetail")
 
 local mod = dmhub.GetModLoading()

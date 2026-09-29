@@ -1,6 +1,7 @@
 --- Project roll record for tracking dice rolls made on downtime projects
 --- Records all details of a roll including modifiers, results, and context
 --- @class DTRoll : DTProgressItem
+--- @field new fun(o?: table): DTRoll
 --- @field rollString string The text representation of the roll
 --- @field rolledBy string The name of the character or follower responsible for the roll
 --- @field rolledById string The unique identifier of the token responsible for the roll

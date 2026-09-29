@@ -23,6 +23,7 @@ end
 --- Grant dialog deals in deltas across the whole party, this one sets the
 --- numbers outright for a single hero.
 --- @class DTActivitiesDialog: GameType
+--- @field new fun(o?: table): DTActivitiesDialog
 DTActivitiesDialog = RegisterGameType("DTActivitiesDialog")
 
 --- Widths of the "- [n] +" control, which reads the same as the Respite's.

@@ -745,6 +745,8 @@ end
 -- race. Live playback state stays in the audioPlaylistState document; game-mode
 -- bindings move to the small audioPlaylistBindings document below.
 --- @class AudioPlaylist: GameType
+--- @field new fun(o?: table): AudioPlaylist
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 AudioPlaylist = RegisterGameType("AudioPlaylist")
 AudioPlaylist.tableName = "audioPlaylists"
 AudioPlaylist.name = "New playlist"
@@ -900,6 +902,7 @@ local audioEventLogSfx = setting{
 }
 
 --- @class AudioLogChatMessage: GameType
+--- @field new fun(o?: table): AudioLogChatMessage
 AudioLogChatMessage = RegisterGameType("AudioLogChatMessage")
 AudioLogChatMessage.text = ""
 AudioLogChatMessage.kind = ""   --"" = transition line, "effect" = soundboard sound effect
@@ -2302,6 +2305,8 @@ end
 -- churn a content row every tap. The separate audioVariantPoolLoops doc (live loop
 -- state) is unchanged.
 --- @class VariantPool: GameType
+--- @field new fun(o?: table): VariantPool
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 VariantPool = RegisterGameType("VariantPool")
 VariantPool.tableName = "audioVariantPools"
 VariantPool.pool = true            -- kept so existing "entry.pool == true" validity

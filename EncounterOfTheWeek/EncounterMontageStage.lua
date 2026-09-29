@@ -5238,6 +5238,35 @@ local function CurrentSceneImage(beat, index, script)
     return EncounterMontage.SceneImage(script, beat)
 end
 
+--Other players' mouse cursors. The engine shares cursors as positions on the
+--map, which mean nothing under a full-screen stage, so while the stage is up
+--it switches this client to screen-space sharing: our pointer goes out as a
+--screen position and everyone else's on the same surface is drawn over the
+--stage. REF COUNTED like the action-bar hide, so a stage rebuilt before the
+--old one is freed does not blink the mode off.
+local CURSOR_SURFACE = "eotwstage"
+local m_cursorHolders = 0
+
+local function AcquireScreenCursors()
+    m_cursorHolders = m_cursorHolders + 1
+    pcall(function() dmhub.screenSpaceCursorSurface = CURSOR_SURFACE end)
+end
+
+local function ReleaseScreenCursors()
+    m_cursorHolders = math.max(0, m_cursorHolders - 1)
+    dmhub.Schedule(0.15, function()
+        --after a Lua reload the NEW copy's stage owns the mode; leave it.
+        if mod.unloaded or m_cursorHolders > 0 then
+            return
+        end
+        pcall(function()
+            if dmhub.screenSpaceCursorSurface == CURSOR_SURFACE then
+                dmhub.screenSpaceCursorSurface = nil
+            end
+        end)
+    end)
+end
+
 local function CreateScriptStage(args)
     local backdrop = CreateBackdrop()
     local dim = CreateDim()
@@ -5245,6 +5274,7 @@ local function CreateScriptStage(args)
     local m_kind = nil
     local m_scene = nil
     local m_dismissed = false
+    local m_holdsCursors = false
 
     --one child, sized to fill: the montage's body or the narrative's.
     local bodyHolder = gui.Panel{
@@ -5265,6 +5295,11 @@ local function CreateScriptStage(args)
             return
         end
         m_dismissed = true
+        --the battlefield shows through from here, so go back to map cursors now.
+        if m_holdsCursors then
+            m_holdsCursors = false
+            ReleaseScreenCursors()
+        end
         local started = false
         pcall(function()
             local transition
@@ -5364,6 +5399,8 @@ local function CreateScriptStage(args)
         create = function(element)
             Refresh(element)
             AcquireActionBarHide()
+            m_holdsCursors = true
+            AcquireScreenCursors()
             --Entering an EotW game holds the loading screen until the opening
             --beat is on screen (EncounterOfTheWeek.md, the loading-screen
             --hold). We are it: let the screen fade over us, a beat later so
@@ -5373,6 +5410,10 @@ local function CreateScriptStage(args)
 
         destroy = function(element)
             ReleaseActionBarHide()
+            if m_holdsCursors then
+                m_holdsCursors = false
+                ReleaseScreenCursors()
+            end
         end,
 
         releaseLoadingScreen = function(element)

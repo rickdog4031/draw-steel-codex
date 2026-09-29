@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 --in response to some trigger rather than when the player decides.
 
 --- @class TriggeredAbility:ActivatedAbility
+--- @field new fun(o?: table): TriggeredAbility
 --- @field categorization string Always "Triggered Ability".
 --- @field despawnBehavior string What to do when a targeted token despawns: "remove" or "corpse".
 --- @field mandatory boolean|string If true, fires automatically; if false, prompts the player; if a string, uses that setting id.
@@ -2029,6 +2030,7 @@ end
 --Creature.lua deserializes the record on the controlling client and calls
 --Invoke(), mirroring AbilityInvocation in AbilityInvokeAbility.lua.
 --- @class TriggeredAbilityRemoteExecution: GameType
+--- @field new fun(o?: table): TriggeredAbilityRemoteExecution
 TriggeredAbilityRemoteExecution = RegisterGameType("TriggeredAbilityRemoteExecution")
 
 --Ships an accepted trigger cast to the caster's controlling client. Symbols

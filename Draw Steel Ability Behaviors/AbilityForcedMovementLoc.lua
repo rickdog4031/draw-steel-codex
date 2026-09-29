@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class ActivatedAbilityForcedMovementLocBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityForcedMovementLocBehavior
 ActivatedAbilityForcedMovementLocBehavior = RegisterGameType("ActivatedAbilityForcedMovementLocBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

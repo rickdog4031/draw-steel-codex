@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityBuildWallBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityBuildWallBehavior
 --- Builds a wall out of "wall voxel" objects (e.g. Motivate Earth's "5 wall").
 --- For each targeted square this spawns the configured object asset -- which must
 --- carry an ObjectComponentWallVoxel component, normally alongside Targetable
@@ -632,6 +633,7 @@ end
 --------------------------------------------------------------------------------
 
 --- @class ActivatedAbilityShiftWallVoxelBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityShiftWallVoxelBehavior
 ActivatedAbilityShiftWallVoxelBehavior = RegisterGameType("ActivatedAbilityShiftWallVoxelBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityShiftWallVoxelBehavior.summary = 'Shift Wall Voxel'

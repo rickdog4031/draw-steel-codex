@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class SpellcastingFeature: GameType
+--- @field new fun(o?: table): SpellcastingFeature
 --- @field id string Unique identifier (default "Custom").
 --- @field name string Display name.
 --- @field attr string Spellcasting ability score id (e.g. "int", "wis", "cha").

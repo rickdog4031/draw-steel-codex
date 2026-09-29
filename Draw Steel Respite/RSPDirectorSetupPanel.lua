@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 --- Director Step 1: the terms of the Respite, before anyone is asked to join.
 --- @class RSPDirectorSetupPanel: GameType
+--- @field new fun(o?: table): RSPDirectorSetupPanel
 RSPDirectorSetupPanel = RegisterGameType("RSPDirectorSetupPanel")
 
 local INSTRUCTIONS = [[

@@ -1,7 +1,9 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Background: GameType
---- @field tableName string Data table name ("backgrounds").
+--- @field new fun(o?: table): Background
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
+--- @field tableName "backgrounds"|"careers" Data table name ("backgrounds").
 --- @field name string Display name.
 --- @field description string Lore/description text.
 --- @field portraitid string Portrait asset id, or "" if unset.

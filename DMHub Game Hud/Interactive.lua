@@ -1,8 +1,10 @@
 local mod = dmhub.GetModLoading()
 
 --- @class InteractiveContainer: GameType
+--- @field new fun(o?: table): InteractiveContainer
 InteractiveContainer = RegisterGameType("InteractiveContainer")
 --- @class Interactive: GameType
+--- @field new fun(o?: table): Interactive
 Interactive = RegisterGameType("Interactive")
 
 local g_registry = {}

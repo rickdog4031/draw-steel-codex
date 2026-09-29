@@ -6,6 +6,7 @@
     used by the monster builder path; can be extended to heroes later.
 ]]
 --- @class CBChoicesDetail: GameType
+--- @field new fun(o?: table): CBChoicesDetail
 CBChoicesDetail = RegisterGameType("CBChoicesDetail")
 
 local SEL = CharacterBuilder.SELECTOR

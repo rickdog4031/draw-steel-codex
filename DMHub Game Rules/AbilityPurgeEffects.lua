@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityPurgeEffectsBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityPurgeEffectsBehavior
 --- @field conditions string[] List of condition ids to purge; empty means purge all ongoing effects.
 ActivatedAbilityPurgeEffectsBehavior = RegisterGameType("ActivatedAbilityPurgeEffectsBehavior", "ActivatedAbilityBehavior")
 
@@ -18,6 +19,7 @@ ActivatedAbility.RegisterType
 
 
 --- @class ActivatedAbilityPurgeEffectsChatMessage: GameType
+--- @field new fun(o?: table): ActivatedAbilityPurgeEffectsChatMessage
 --- @field ability ActivatedAbility
 ActivatedAbilityPurgeEffectsChatMessage = RegisterGameType("ActivatedAbilityPurgeEffectsChatMessage")
 ActivatedAbilityPurgeEffectsChatMessage.conditions = {}

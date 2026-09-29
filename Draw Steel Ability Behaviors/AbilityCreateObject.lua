@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityCreateObjectBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityCreateObjectBehavior
 ActivatedAbilityCreateObjectBehavior = RegisterGameType("ActivatedAbilityCreateObjectBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityCreateObjectBehavior.summary = 'Create Object'
@@ -259,6 +260,7 @@ end
 --=============================================================================
 
 --- @class ActivatedAbilityCreateLaneObjectBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityCreateLaneObjectBehavior
 ActivatedAbilityCreateLaneObjectBehavior = RegisterGameType("ActivatedAbilityCreateLaneObjectBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityCreateLaneObjectBehavior.summary = 'Create Lane Object'

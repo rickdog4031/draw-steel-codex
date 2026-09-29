@@ -190,6 +190,7 @@ CreateFishingPanel = function(options)
 end
 
 ---@class RichFishing: RichTag
+--- @field new fun(o?: table): RichFishing
 RichFishing = RegisterGameType("RichFishing", "RichTag")
 RichFishing.tag = "fishing"
 

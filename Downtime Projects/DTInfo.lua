@@ -2,6 +2,7 @@
 --- Manages available rolls and downtime projects for a single character
 --- Stored within the character object in the root node named 'downtimeInfo'
 --- @class DTInfo: GameType
+--- @field new fun(o?: table): DTInfo
 --- @field availableRolls number Counter that the Director increments via Grant Rolls to All
 --- @field downtimeProjects DTProject[] The list of DTProject records for the character
 --- @field followerRolls table<string, number> Map of follower GUID to available rolls count

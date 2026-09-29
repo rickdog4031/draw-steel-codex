@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 ---@class RichImage: RichTag
+--- @field new fun(o?: table): RichImage
 RichImage = RegisterGameType("RichImage", "RichTag")
 RichImage.tag = "image"
 RichImage.image = false

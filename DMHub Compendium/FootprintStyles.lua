@@ -16,6 +16,7 @@ local mod = dmhub.GetModLoading()
 --just darkens whatever ground it lands on. Only an image's transparency matters.
 
 --- @class FootprintStyle: GameType
+--- @field new fun(o?: table): FootprintStyle
 --- @field id string GUID identifier (engine-managed for table items)
 --- @field name string Display name
 --- @field imageid string Image asset id of the print, drawn toe-up. "" uses the built-in boot print.
@@ -68,13 +69,30 @@ function FootprintStyle.CreateNew(args)
     return FootprintStyle.new(args or {})
 end
 
---- The style a creature leaves as a plain table {id, name, imageid, length,
---- spacing, alternate}, or nil when it leaves no prints. A compendium style that
---- has since been deleted or hidden falls back to the default (Feet).
+--- The style a creature leaves right now, as a plain table {id, name, imageid,
+--- length, spacing, alternate}, or nil when it leaves no prints. Follows the
+--- creature's body (creature:GetBodyTrait): a form it has taken, else its own
+--- pick, else its ancestry's.
 --- @param props creature
 --- @return table|nil
 function FootprintStyle.GetForCreature(props)
-    local id = props:try_get("footprintStyle")
+    return FootprintStyle.GetStyle(props:GetBodyTrait("footprintStyle"))
+end
+
+--- The style a creature leaves in its own body, ignoring any form it has taken:
+--- what its Appearance tab shows.
+--- @param props creature
+--- @return table|nil
+function FootprintStyle.GetNaturalForCreature(props)
+    return FootprintStyle.GetStyle(props:GetNaturalBodyTrait("footprintStyle"))
+end
+
+--- A footprintStyle value resolved to its style table, or nil for None. nil/"" is
+--- the default (Feet); a compendium style that has since been deleted or hidden
+--- falls back to the default too.
+--- @param id nil|string
+--- @return table|nil
+function FootprintStyle.GetStyle(id)
     if id == nil or id == "" then
         return g_defaultStyle
     end

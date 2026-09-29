@@ -1,9 +1,11 @@
 local mod = dmhub.GetModLoading()
 
 ---@class InfoDocument: GameType
+--- @field new fun(o?: table): InfoDocument
 ---@field docid string|false a reference to a markdown document in the journal.
 InfoDocument = RegisterGameType("InfoDocument")
 --- @class InfoDocumentSection: GameType
+--- @field new fun(o?: table): InfoDocumentSection
 InfoDocumentSection = RegisterGameType("InfoDocumentSection")
 
 --a reference to a markdown document in the journal.

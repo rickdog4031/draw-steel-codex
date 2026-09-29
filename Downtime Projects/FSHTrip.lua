@@ -5,6 +5,7 @@ local mod = dmhub.GetModLoading()
 --- client that started it. That single-writer rule is what keeps concurrent
 --- Trips from racing each other.
 --- @class FSHTrip: GameType
+--- @field new fun(o?: table): FSHTrip
 FSHTrip = RegisterGameType("FSHTrip")
 
 FSHTrip.STATUS = {

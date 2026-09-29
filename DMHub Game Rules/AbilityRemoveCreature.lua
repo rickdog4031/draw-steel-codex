@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityRemoveCreatureBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityRemoveCreatureBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field dropsLoot boolean If true, the removed creature drops its loot.
 --- @field leavesCorpse boolean If true, a corpse object is left behind.
@@ -148,11 +149,30 @@ function ActivatedAbilityRemoveCreatureBehavior:LeaveCorpse(token, newObj)
     end
 
 
+    --what the corpse's blood needs (BloodSpatter.EmitCorpse), captured now
+    --because the dead creature may change or be gone by the time a client
+    --sees the corpse: how big it was, what it bled, and how far past dead the
+    --killing blow took it (stamina below zero = a messier death).
+    local props = token.properties
+    local overkill = 0
+    local damageType = nil
+    if props ~= nil then
+        overkill = math.max(0, (props.damage_taken or 0) - props:MaxHitpoints())
+        local lastType = props:try_get("_tmp_lastdamagetype")
+        if lastType ~= nil then
+            damageType = string.lower(tostring(lastType))
+        end
+    end
+
     newObj:AddComponentFromJson("CORPSE", {
         ["@class"] = "ObjectComponentCorpse",
         properties = {
             __typeName = "CorpseComponent",
             charid = token.charid,
+            bloodColor = (props ~= nil and BloodSpatter ~= nil) and BloodSpatter.GetColorId(props) or nil,
+            bloodRadius = token.radiusInTiles,
+            overkill = overkill,
+            damageType = damageType,
         }
     })
 
@@ -457,9 +477,42 @@ function ActivatedAbilityRemoveCreatureBehavior:EditorItems(parentPanel)
 end
 
 --- @class CorpseComponent: GameType
+--- @field new fun(o?: table): CorpseComponent
+--- @field charid string The dead creature's character id.
+--- @field bloodColor nil|string What the creature bled when it died: a BloodSpatter.colors id (nil = red; corpses left before this field existed).
+--- @field bloodRadius nil|number The dead creature's token radius in tiles (nil = medium).
+--- @field overkill nil|number How far below zero the creature's stamina was when it died (nil = 0).
+--- @field damageType nil|string The damage type of the killing blow, lowercase (nil = untyped or unknown): picks the marks the corpse lies in (BloodSpatter.damageEffects).
+--- @field charred nil|boolean Older corpses only: true meant a fire kill (now damageType = "fire").
 CorpseComponent = RegisterGameType("CorpseComponent")
 
 CorpseComponent.charid = "none"
+
+--Engine hooks (ObjectComponentCorpse): every client hears when a corpse object
+--appears here, moves, and goes away, and keeps its blood in step. Client-local:
+--the blood is drawn from the fields above, seeded from the object id, so every
+--client draws the same.
+--- @param obj LuaObjectInstance
+function CorpseComponent:OnAppear(obj)
+    if BloodSpatter ~= nil then
+        BloodSpatter.EmitCorpse(self, obj)
+    end
+end
+
+--- @param obj LuaObjectInstance
+function CorpseComponent:OnMoved(obj)
+    if BloodSpatter ~= nil then
+        BloodSpatter.ClearCorpse(obj)
+        BloodSpatter.EmitCorpse(self, obj)
+    end
+end
+
+--- @param obj LuaObjectInstance
+function CorpseComponent:OnDisappear(obj)
+    if BloodSpatter ~= nil then
+        BloodSpatter.ClearCorpse(obj)
+    end
+end
 
 -- Diagnostic logger used by both the kill (LeaveCorpse path) and the revive
 -- (Respawn). Tagged "[CORPSE_REVIVE]" so it's easy to grep out of the logs

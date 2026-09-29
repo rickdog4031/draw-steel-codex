@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityCreatureSetBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityCreatureSetBehavior
 --- @field summary string Short label shown in behavior lists.
 ActivatedAbilityCreatureSetBehavior = RegisterGameType("ActivatedAbilityCreatureSetBehavior", "ActivatedAbilityBehavior")
 

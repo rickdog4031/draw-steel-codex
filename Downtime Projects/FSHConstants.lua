@@ -2,6 +2,7 @@
 --- Provides the enum vocabulary, size bands, and species presentation pools
 --- used across the fishing classes.
 --- @class FSHConstants: GameType
+--- @field new fun(o?: table): FSHConstants
 FSHConstants = RegisterGameType("FSHConstants")
 
 --- Turns on every testing affordance at once: the Trip's starting points, the

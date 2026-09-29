@@ -1,4 +1,5 @@
 ---@class RichFollower: RichTag
+--- @field new fun(o?: table): RichFollower
 RichFollower = RegisterGameType("RichFollower", "RichTag")
 RichFollower.tag = "follower"
 

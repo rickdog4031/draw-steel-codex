@@ -1263,6 +1263,7 @@ check(#delveWarns == 0, "the delve sample parses clean: " .. table.concat(delveW
 check(#delveParse.beats == 1, "a delve is not a beat")
 local tomb = EncounterScript.FindDelve(delveParse, "forbidden tomb")
 check(tomb ~= nil and tomb.name == "Forbidden Tomb", "FindDelve by name, any case")
+assert(tomb ~= nil) --narrows the type; check above already failed if nil
 check(tomb.chestEvery[1] == 1 and tomb.chestEvery[2] == 2, "Chest: every 1-2 obstacles")
 check(#tomb.obstacles == 2 and tomb.obstacles[1].id == "d-forbidden-tomb-the-restless-dead", "obstacles with ids")
 check(tomb.obstacles[1].scripted and #tomb.obstacles[1].scene == 2 and tomb.obstacles[1].actors["skeleton"] ~= nil, "an obstacle's scene and cast")

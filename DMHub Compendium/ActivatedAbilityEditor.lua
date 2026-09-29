@@ -4160,7 +4160,7 @@ local function ResolveAbilitySource(source, abilityGuid)
 	end
 
 	local t = dmhub.GetTable(source.tableid)
-	local item = t ~= nil and t[source.key] or nil
+	local item = t ~= nil and t[source.key] or nil --[[@as table|nil]]
 	if type(item) ~= "table" then
 		return nil, nil
 	end

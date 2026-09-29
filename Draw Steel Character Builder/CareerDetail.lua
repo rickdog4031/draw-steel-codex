@@ -2,6 +2,7 @@
     Career detail / selectors
 ]]
 --- @class CBCareerDetail: GameType
+--- @field new fun(o?: table): CBCareerDetail
 CBCareerDetail = RegisterGameType("CBCareerDetail")
 
 local mod = dmhub.GetModLoading()

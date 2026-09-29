@@ -3,10 +3,12 @@ local mod = dmhub.GetModLoading()
 --This file implements the core rules for classes.
 
 --- @class Class: GameType
+--- @field new fun(o?: table): Class
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of the class.
 --- @field details string Long-form description/lore text.
 --- @field portraitid string Asset id for the class portrait image.
---- @field tableName string Name of the data table this class is stored in ("classes").
+--- @field tableName "classes" Name of the data table this class is stored in ("classes").
 --- @field isSubclass boolean If true, this is a subclass rather than a base class.
 --- @field primaryClassId string The id of the parent class (empty string if not a subclass).
 --- @field hit_die integer Hit die size (e.g. 8, 10, 12).
@@ -22,19 +24,24 @@ local mod = dmhub.GetModLoading()
 Class = RegisterGameType("Class")
 
 --- @class ClassLevel: GameType
+--- @field new fun(o?: table): ClassLevel
 --- @field features (CharacterFeature|CharacterChoice)[] Features and choices granted at this level.
 ClassLevel = RegisterGameType("ClassLevel") --type which represents the benefits a character gets at a specific level.
 
 --- @class CharacterChoice: GameType
+--- @field new fun(o?: table): CharacterChoice
 CharacterChoice = RegisterGameType("CharacterChoice")
 
 --- @class CharacterFeatureChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterFeatureChoice
 CharacterFeatureChoice = RegisterGameType("CharacterFeatureChoice", "CharacterChoice")
 
 --- @class CharacterSubclassChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterSubclassChoice
 CharacterSubclassChoice = RegisterGameType("CharacterSubclassChoice", "CharacterChoice")
 
 --- @class CharacterFeatureList: GameType
+--- @field new fun(o?: table): CharacterFeatureList
 CharacterFeatureList = RegisterGameType("CharacterFeatureList")
 
 --- @param options nil|table
@@ -861,6 +868,7 @@ end
 -------------------------------------------------
 
 --- @class CharacterSkillsChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterSkillsChoice
 --- @field name string Display name ("Extra Proficiency").
 --- @field guid string Fixed guid ("duplicate-skills-choice") for this singleton choice type.
 --- @field description string Prompt explaining the duplicate proficiency situation.
@@ -944,6 +952,7 @@ function CharacterSkillsChoice:Choices(numOption, existingChoices, creature)
 end
 
 --- @class CharacterToolsChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterToolsChoice
 --- @field name string Display name ("Extra Tools Proficiency").
 --- @field guid string Fixed guid ("duplicate-tools-choice") for this singleton choice type.
 --- @field description string Prompt explaining the duplicate tool proficiency situation.

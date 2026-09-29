@@ -11,6 +11,7 @@ local mod = dmhub.GetModLoading()
 -- renders as the same red "cost diamond" used on the action bar.
 
 ---@class RichResource: RichTag
+--- @field new fun(o?: table): RichResource
 RichResource = RegisterGameType("RichResource", "RichTag")
 RichResource.tag = "resource"
 -- Pattern-based (carries no stored annotation): the resource is identified by

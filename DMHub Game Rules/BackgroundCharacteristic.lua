@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class BackgroundCharacteristic: GameType
+--- @field new fun(o?: table): BackgroundCharacteristic
 --- @field tableid string Id of the RollTable stored in characteristicsTable.
 --- @field characteristicsTable string Data table name where the roll tables are stored ("characteristicsTable").
 --- Embeds a named roll table into a background or character type, used for personality traits, bonds, etc.

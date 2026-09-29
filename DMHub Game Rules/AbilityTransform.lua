@@ -3,6 +3,7 @@ local mod = dmhub.GetModLoading()
 --this implements the "transform" behavior for activated abilities.
 
 --- @class ActivatedAbilityTransformBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityTransformBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field allCreaturesTheSame boolean If true, all targets transform into the same creature.
 --- @field monsterType string Source for the transform target: "custom" or a monster category filter.

@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterSheet: GameType
+--- @field new fun(o?: table): CharacterSheet
 CharacterSheet = RegisterGameType("CharacterSheet")
 
 if rawget(CharacterSheet, "instance") and CharacterSheet.instance.valid then

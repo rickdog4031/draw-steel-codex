@@ -1,7 +1,9 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterType: GameType
---- @field tableName string Data table name ("characterTypes").
+--- @field new fun(o?: table): CharacterType
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
+--- @field tableName "characterTypes" Data table name ("characterTypes").
 --- @field name string Display name.
 --- @field description string Rules/lore text.
 --- @field modifierInfo nil|ClassLevel ClassLevel storing modifiers and features for this character type.
@@ -80,7 +82,7 @@ end
 
 local SetCharacterType = function(tableName, characterTypePanel, characterTypeId)
 	local characterTypeTable = dmhub.GetTable(tableName) or {}
-	local characterType = characterTypeTable[characterTypeId]
+	local characterType = characterTypeTable[characterTypeId] --[[@as CharacterType]]
 	local UploadCharacterType = function()
 		dmhub.SetAndUploadTableItem(tableName, characterType)
 	end

@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityDestroyBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityDestroyBehavior
 ActivatedAbilityDestroyBehavior = RegisterGameType("ActivatedAbilityDestroyBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityDestroyBehavior.summary = 'Destroys Creatures'

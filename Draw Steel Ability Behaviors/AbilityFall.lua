@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityFallBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityFallBehavior
 ActivatedAbilityFallBehavior = RegisterGameType("ActivatedAbilityFallBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType
@@ -31,6 +32,7 @@ function ActivatedAbilityFallBehavior:EditorItems(parentPanel)
 end
 
 --- @class ActivatedAbilityLiftVerticalBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityLiftVerticalBehavior
 --- Lifts each target straight up into the air by a number of squares (no
 --- horizontal movement, no prompt). The target must be able to fly when this
 --- runs -- pair it with an Ability Duration Effect granting fly earlier in the
@@ -143,6 +145,7 @@ function ActivatedAbilityLiftVerticalBehavior:EditorItems(parentPanel)
 end
 
 --- @class ActivatedAbilityDigVerticalBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityDigVerticalBehavior
 --- The Dig maneuver's movement: the caster chooses a purely vertical distance
 --- (straight up or down through the ground) up to its size, then moves there.
 --- Unlike forced movement it never moves horizontally and never rises above

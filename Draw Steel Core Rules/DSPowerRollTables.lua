@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class PowerRollTable: GameType
+--- @field new fun(o?: table): PowerRollTable
 --- @field name string Display name for this power roll tier table.
 --- @field description string Human-readable notes about this table. Not used by any rules.
 --- @field entries table[] List of tier entries with outcome descriptions and thresholds.
@@ -11,9 +12,11 @@ PowerRollTable = RegisterGameType("PowerRollTable")
 PowerRollTable.description = ""
 
 --- @class PowerRollTableGroup: GameType
+--- @field new fun(o?: table): PowerRollTableGroup
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name for this group of power roll tables.
 --- @field description string Human-readable notes about this group. Not used by any rules.
---- @field tableName string Data table name ("powerRolls").
+--- @field tableName "powerRolls" Data table name ("powerRolls").
 --- @field skill string Id of the Skill these tests belong to, or "none".
 --- @field tables PowerRollTable[] Ordered list of PowerRollTable entries in this group.
 --- A named collection of PowerRollTable entries (e.g. "Easy", "Medium", "Hard" encounter tables).

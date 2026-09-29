@@ -5,6 +5,7 @@
     expansion to support other status types.
 ]]
 --- @class CBSelectionStatus: GameType
+--- @field new fun(o?: table): CBSelectionStatus
 CBSelectionStatus = RegisterGameType("CBSelectionStatus")
 
 local _formatOrder = CharacterBuilder._formatOrder

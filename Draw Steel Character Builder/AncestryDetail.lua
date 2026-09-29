@@ -3,6 +3,7 @@
 ]]
 
 --- @class CBAncestryDetail: GameType
+--- @field new fun(o?: table): CBAncestryDetail
 CBAncestryDetail = RegisterGameType("CBAncestryDetail")
 
 local mod = dmhub.GetModLoading()

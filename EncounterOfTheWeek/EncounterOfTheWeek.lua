@@ -259,9 +259,8 @@ end
 --Tactician, Human Null) with partyId = the default Players guid -- the
 --modules descend from the same source game, so the guid matches exactly and
 --they land in the live party. Every EotW game therefore listed two extra
---unclaimed heroes nobody chose. Any module in a player's shop inventory that
---shares that lineage can do the same (see "Stray extra pregens from shop
---auto-install"), so the sweep is written against the general case.
+--unclaimed heroes nobody chose. Any other installed module that shares that
+--lineage can do the same, so the sweep is written against the general case.
 --
 --Only MODULE CONTENT is touched: a hero placed by EotW is a paste with a
 --fresh guid, so IsCharacterAvailableInModule is false for it, and a claimed

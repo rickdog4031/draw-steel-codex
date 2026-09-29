@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 ---@class ActivatedAbilityRevertLocBehavior : ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityRevertLocBehavior
 ActivatedAbilityRevertLocBehavior = RegisterGameType("ActivatedAbilityRevertLocBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

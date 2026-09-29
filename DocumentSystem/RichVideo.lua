@@ -6,6 +6,7 @@ local mod = dmhub.GetModLoading()
 --- is driven by the panel video bridge added to SheetPanel (videoTime,
 --- videoDuration, PlayVideo/PauseVideo, videoVolume, videoMuted, ...).
 ---@class RichVideo: RichTag
+--- @field new fun(o?: table): RichVideo
 RichVideo = RegisterGameType("RichVideo", "RichTag")
 RichVideo.tag = "video"
 RichVideo.image = false      -- asset id of the video / animated webp

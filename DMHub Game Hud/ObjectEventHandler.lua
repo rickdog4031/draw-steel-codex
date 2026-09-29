@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class EventHandlerComponent: GameType
+--- @field new fun(o?: table): EventHandlerComponent
 EventHandlerComponent = RegisterGameType("EventHandlerComponent")
 
 dmhub.CreateEventHandlerComponent = function()
@@ -97,6 +98,7 @@ end
 
 --Event Trigger
 --- @class EventTriggerComponent: GameType
+--- @field new fun(o?: table): EventTriggerComponent
 EventTriggerComponent = RegisterGameType("EventTriggerComponent")
 
 dmhub.CreateEventTriggerComponent = function()
@@ -153,6 +155,7 @@ end
 
 --Data Input
 --- @class DataInputComponent: GameType
+--- @field new fun(o?: table): DataInputComponent
 DataInputComponent = RegisterGameType("DataInputComponent")
 
 dmhub.CreateDataInputComponent = function()
@@ -232,6 +235,7 @@ end
 
 --Data Output
 --- @class DataOutputComponent: GameType
+--- @field new fun(o?: table): DataOutputComponent
 DataOutputComponent = RegisterGameType("DataOutputComponent")
 
 dmhub.CreateDataOutputComponent = function()

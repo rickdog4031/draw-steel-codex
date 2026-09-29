@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterPrerequisite: GameType
+--- @field new fun(o?: table): CharacterPrerequisite
 --- @field guid string Unique identifier.
 --- @field type string Prerequisite type id (e.g. "skillProficiency", "equipmentProficiency").
 --- @field skill string Id of the skill or equipment category required.

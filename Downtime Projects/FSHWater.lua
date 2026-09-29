@@ -5,6 +5,7 @@ local mod = dmhub.GetModLoading()
 --- whether players may start fishing. Held in a shared document so every client
 --- sees the same water without the module pushing anything.
 --- @class FSHWater: GameType
+--- @field new fun(o?: table): FSHWater
 FSHWater = RegisterGameType("FSHWater")
 
 local documentName = "fsh_water"

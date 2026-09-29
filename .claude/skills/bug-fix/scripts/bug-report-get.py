@@ -2,7 +2,9 @@
 
 Checks /BugReports first (novel/unprocessed), then /BugReportsArchive (processed).
 If the report has been triaged, also pulls its issue-registry node so the caller
-gets the agent's analysis + Discord thread in one shot.
+gets the agent's analysis + Discord thread in one shot. The thread is the issue's
+`threadId` field, absent when none was opened; `_threadId` is the registry KEY
+(despite the name) and is not a thread id for issues since 2026-09-17.
 
 Goes through /api/bugs/report on the internal-dashboards Worker, which holds the
 Firebase service account server-side. This machine needs only the shared team
@@ -16,7 +18,7 @@ Prints JSON:
     "found":  true|false,
     "source": "BugReports" | "BugReportsArchive" | null,
     "report": { ...record, "_id": ..., "triage": { issueId, analysis, ... } } | null,
-    "issue":  { title, type, signature, status, reportIds, "_threadId": ... } | null,
+    "issue":  { title, type, signature, status, reportIds, threadId?, "_threadId": <key> } | null,
     "ticket": { uid, exists } | null    // is there a user-facing ticket to close
   }
 """

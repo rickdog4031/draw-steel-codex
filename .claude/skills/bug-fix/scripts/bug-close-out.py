@@ -6,9 +6,13 @@ Three outward-facing steps, in order (each can be skipped; --dry-run previews al
      dashboard's tickets API (so it carries the dashboard's dev name, bumps
      lastDevMessageAt and fires the in-app "developer responded" marker).
   2. Set that ticket's status to closed.
-  3. Reply "Fixed and Closed" into the report's Discord thread (in #bugs or
+  3. Reply "Fixed and Closed" into the issue's Discord thread (in #bugs or
      #user-feedback, whichever the thread was opened in).
   4. Archive that thread, so it drops off the forum's active list.
+
+Steps 3+4 run only when the issue HAS a thread. Since 2026-09-17 triage no longer
+opens one per issue -- the thread is the issue node's `threadId` field, present
+only once a human opened one -- so an issue with none skips them with a note.
 
 Usage:
   python bug-close-out.py <reportId> [options]
@@ -18,7 +22,10 @@ Options:
   --message TEXT         override the ticket message (default: the thank-you line)
   --discord-text TEXT    override the Discord reply (default: "Fixed and Closed")
   --dev-name NAME        dashboard display name to post as (default: Codex Developers)
-  --thread ID            Discord thread id, when the report has no triage.issueId
+  --thread KEY           issue to reply into instead of the report's triage.issueId.
+                         An issue registry KEY: the dashboard resolves the thread
+                         from the issue node, so a raw Discord thread id only works
+                         for issues from before 2026-09-17 (key == thread id)
   --no-ticket            skip steps 1+2 (Discord only)
   --no-discord           skip steps 3+4 (ticket only)
   --no-archive           post the reply but leave the thread open
@@ -124,6 +131,36 @@ def main():
     if report is None:
         raise SystemExit("Report %s not found in /BugReports or /BugReportsArchive." % rid)
     uid = report.get("userid")
+<<<<<<< HEAD
+    issue = data.get("issue")
+    # The Discord calls take the issue KEY and the dashboard resolves its thread.
+    # The key is not itself a thread id (see lib.issue_thread), so look the thread
+    # up here only to know whether there is one to reply into.
+    issue_id = o["thread"] or (report.get("triage") or {}).get("issueId")
+    thread_id = None
+    if o["thread"]:
+        # Override: we have no node for it, so let the dashboard resolve it.
+        thread_id = o["thread"]
+        no_thread = None
+    elif not issue_id:
+        no_thread = "report not triaged, so no issue or thread (pass --thread)"
+    elif not issue:
+        no_thread = "issue %s not found in the registry" % issue_id
+    else:
+        thread_id = lib.issue_thread(issue)
+        no_thread = None if thread_id else "issue %s has no Discord thread" % issue_id
+    # Which forum the thread lives in. Informational: the dashboard picks the
+    # webhook from the issue node itself and ignores this.
+    channel_key = (issue or {}).get("channelKey")
+
+    print("Report %s (%s)" % (rid, source))
+    print("  user    : %s" % (uid or "(none)"))
+    print("  issue   : %s" % (issue_id or "(none)"))
+    if o["thread"]:
+        print("  thread  : resolved by the dashboard from --thread %s" % o["thread"])
+    else:
+        print("  thread  : %s" % (thread_id or "(none -- %s)" % no_thread))
+=======
     # Since 2026-09-17 triage opens no thread per bug: the issue key is then the
     # opening report's id, and `threadId` is set only once a human opens one. The
     # key still resolves to the thread on the Worker when one exists.
@@ -139,6 +176,7 @@ def main():
     print("  user    : %s" % (uid or "(none)"))
     print("  thread  : %s" % (thread_id or ("(none -- the issue has no Discord thread)" if issue_node
                                           else "(none -- report not triaged yet)")))
+>>>>>>> adac56ee375e55bfb7c896884bc8d26d041693b5
 
     steps = []   # (label, ok, detail)
 
@@ -177,11 +215,13 @@ def main():
         # Most issues have no thread now; that is not a failed closeout.
         steps.append(("discord", None, "issue has no Discord thread; nothing to reply to"))
     elif not thread_id:
-        steps.append(("discord", False, "no thread id (untriaged report; pass --thread)"))
+        # Ordinary since threads became optional: nothing to reply into or archive.
+        steps.append(("discord", None, "skipped -- %s" % no_thread))
     else:
-        print("\n%sdiscord reply -> thread %s:\n  %s" % (tag, thread_id, o["discord_text"]))
+        print("\n%sdiscord reply -> issue %s, thread %s:\n  %s"
+              % (tag, issue_id, thread_id, o["discord_text"]))
         if not o["dry_run"]:
-            lib.discord_reply(cfg, thread_id, o["discord_text"], channel_key=channel_key)
+            lib.discord_reply(cfg, issue_id, o["discord_text"], channel_key=channel_key)
             steps.append(("discord", True, "replied to thread %s" % thread_id))
         else:
             steps.append(("discord", None, "would reply"))
@@ -195,7 +235,7 @@ def main():
             print("%sarchive thread %s" % (tag, thread_id))
             steps.append(("archive thread", None, "would archive"))
         else:
-            steps.append(("archive thread",) + lib.discord_archive_thread(cfg, thread_id))
+            steps.append(("archive thread",) + lib.discord_archive_thread(cfg, issue_id))
 
     print("\nSummary%s:" % (" (dry run -- nothing sent)" if o["dry_run"] else ""))
     failed = False

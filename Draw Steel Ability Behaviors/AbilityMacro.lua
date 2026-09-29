@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class ActivatedAbilityMacroBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityMacroBehavior
 ActivatedAbilityMacroBehavior = RegisterGameType("ActivatedAbilityMacroBehavior", "ActivatedAbilityBehavior")
 
 

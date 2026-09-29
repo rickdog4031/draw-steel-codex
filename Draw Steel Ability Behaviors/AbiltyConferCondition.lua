@@ -11,6 +11,7 @@ local mod = dmhub.GetModLoading()
 --------------------------------------------------------------------------------
 
 --- @class ActivatedAbilityConferConditionsBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityConferConditionsBehavior
 --- @field conditions string[] Optional restrict list of condition ids; empty means offer all of the source's conditions.
 ActivatedAbilityConferConditionsBehavior = RegisterGameType("ActivatedAbilityConferConditionsBehavior", "ActivatedAbilityBehavior")
 

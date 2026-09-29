@@ -310,6 +310,7 @@ local function validateOptions(options)
 end
 
 --- @class CharacterSkillDialog: GameType
+--- @field new fun(o?: table): CharacterSkillDialog
 --- A dialog for editing skills in the context of a character sheet
 CharacterSkillDialog = RegisterGameType("CharacterSkillDialog")
 

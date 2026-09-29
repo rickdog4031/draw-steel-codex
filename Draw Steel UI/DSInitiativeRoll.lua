@@ -927,6 +927,7 @@ function showDrawSteelRerollBanner()
 end
 
 --- @class Encounter: GameType
+--- @field new fun(o?: table): Encounter
 Encounter = RegisterGameType("Encounter") --make sure we have it registered.
 
 --Journal "Draw Steel!" button entry point. Opens the combat setup dialog scoped to
@@ -1021,6 +1022,7 @@ function Encounter.StartCombatWithTokens(args)
 end
 
 --- @class RollInitiativeChatMessage: GameType
+--- @field new fun(o?: table): RollInitiativeChatMessage
 --- @field winner "players"|"monsters"
 --- @field playerTokenIds string[]
 --- @field monsterTokenIds string[]

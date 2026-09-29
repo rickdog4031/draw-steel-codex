@@ -12,6 +12,7 @@ local function track(eventType, fields)
 end
 
 --- @class ActivatedAbilityDrawSteelCommandBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityDrawSteelCommandBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field rule string GoblinScript rule expression executed when this behavior fires.
 --- Executes a GoblinScript "rule" as part of the ability's power table effect resolution.
@@ -2063,6 +2064,7 @@ ActivatedAbilityTableRollBehavior.ExecuteCommand = ActivatedAbilityDrawSteelComm
 ActivatedAbilityTableRollBehavior.ExecuteCommandInternal = ActivatedAbilityDrawSteelCommandBehavior.ExecuteCommandInternal
 
 --- @class ActivatedAbilityApplyFreeStrikePowerRollModifiersBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityApplyFreeStrikePowerRollModifiersBehavior
 --- Runs as the final step of a free strike. Walks the caster's active power-roll
 --- modifiers, picks any flagged with applyToFreeStrikes=true and a non-empty
 --- addText, evaluates their activationCondition + keyword filters against the

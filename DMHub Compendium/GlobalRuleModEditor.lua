@@ -3,7 +3,7 @@ local mod = dmhub.GetModLoading()
 
 local SetGlobalRuleMod = function(tableName, ruleModPanel, ruleModid)
 	local ruleModTable = dmhub.GetTable(tableName) or {}
-	local ruleMod = ruleModTable[ruleModid]
+	local ruleMod = ruleModTable[ruleModid] --[[@as GlobalRuleMod]]
 	local UploadGlobalRuleMod = function()
 		dmhub.SetAndUploadTableItem(tableName, ruleMod)
 	end

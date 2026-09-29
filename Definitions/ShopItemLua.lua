@@ -7,7 +7,6 @@
 --- @field keywords string Comma-separated keywords for searching.
 --- @field artistid string The identifier of the artist who created this item.
 --- @field price number The price in tokens.
---- @field autoInstall boolean Whether this module auto-installs when purchased.
 --- @field hasBundle boolean True if this shop item includes a bundle of other items.
 --- @field bundle table<string, boolean> A table of bundled item IDs mapped to true. Read/write.
 --- @field hasAnimatedTokens boolean True if this is an AnimatedTokens item that grants one or more animated tokens.

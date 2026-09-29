@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Projectile: GameType
+--- @field new fun(o?: table): Projectile
 --- Computes and manages the path and visual behavior of a ranged attack projectile.
 Projectile = RegisterGameType("Projectile")
 

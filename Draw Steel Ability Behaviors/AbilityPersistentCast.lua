@@ -1,13 +1,16 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Persistence: GameType
+--- @field new fun(o?: table): Persistence
 Persistence = RegisterGameType("Persistence")
 Persistence.name = ""
 
 --- @class ActivatedAbilityPersistenceControlBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityPersistenceControlBehavior
 ActivatedAbilityPersistenceControlBehavior = RegisterGameType("ActivatedAbilityPersistenceControlBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityPersistenceCastBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityPersistenceCastBehavior
 ActivatedAbilityPersistenceCastBehavior = RegisterGameType("ActivatedAbilityPersistenceCastBehavior", "ActivatedAbilityBehavior")
 
 RegisterGoblinScriptSymbol(creature, {

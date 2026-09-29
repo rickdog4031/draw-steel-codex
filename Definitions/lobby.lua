@@ -56,7 +56,7 @@ function lobby:CloneDOGameToOtherEnvironment(gameid, options) end
 --- @param options table Options with optional 'progress' and 'complete' callback fields.
 function lobby:CloneGameToLocal(gameid, options) end
 
---- Creates a new game with the given options table. The options table may contain 'create' and 'error' callback functions. Rate-limited to one creation every 3 seconds.
+--- Creates a new game with the given options table. The options table may contain 'create' and 'error' callback functions, 'description', 'descriptionDetails' and 'coverart' for the game record, 'startingModule' (the module whose starter map the game opens on; an empty string skips the install), 'noSystemModule' (true to suppress the injected Draw Steel system module) and 'additionalModules' (a list of further module ids the Director's client installs once the game loads). Rate-limited to one creation every 3 seconds.
 --- @param options table Options with optional 'create' and 'error' callback fields.
 function lobby:CreateGame(options) end
 

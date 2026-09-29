@@ -16,6 +16,7 @@ local CreateJournalPanel
 local docid = "journal"
 
 --- @class CustomDocument: GameType
+--- @field new fun(o?: table): CustomDocument
 CustomDocument = RegisterGameType("CustomDocument")
 
 Commands.RegisterMacro{

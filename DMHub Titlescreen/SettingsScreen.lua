@@ -6346,6 +6346,390 @@ function CreateSettingsScreen(dialog, args)
 		}
 	end
 
+	--Reset Settings: a list of every setting the user can edit (it has an
+	--`editor`) whose value differs from its default, each with its own Reset,
+	--plus Reset All. Settings with no editor are app state kept in the
+	--settings system (chat history, dock layouts, tutorial flags...) and are
+	--deliberately left out. Game/map/floor settings change the game for
+	--everyone, so they are listed only for the Director (matching the Game and
+	--Map tabs), marked as such, and never touched by Reset All.
+	local IsGameWideStorage = function(storage)
+		return storage == "game" or storage == "map" or storage == "floor"
+	end
+
+	local ResetSettingValuesEqual
+	ResetSettingValuesEqual = function(a, b)
+		if a == b then
+			return true
+		end
+		if type(a) ~= "table" or type(b) ~= "table" then
+			--colors compare with == (LuaColor has __eq); tostring on a color
+			--is the same for every color, so it must never be used here.
+			return false
+		end
+		for k,v in pairs(a) do
+			if not ResetSettingValuesEqual(v, b[k]) then
+				return false
+			end
+		end
+		for k,_ in pairs(b) do
+			if a[k] == nil then
+				return false
+			end
+		end
+		return true
+	end
+
+	--Display text for a setting value, plus a color when the value is a color
+	--(shown as a swatch).
+	local FormatResetSettingValue = function(var, value)
+		if var.getOptions ~= nil then
+			local ok, options = pcall(var.getOptions)
+			if ok and type(options) == "table" then
+				for _,option in ipairs(options) do
+					if option.id == value and option.text ~= nil then
+						return tostring(option.text)
+					end
+				end
+			end
+		end
+
+		local enum = var.enum
+		if var.enumCalc ~= nil then
+			local ok, calc = pcall(var.enumCalc)
+			enum = ok and calc or nil
+		end
+		if type(enum) == "table" then
+			for _,entry in ipairs(enum) do
+				if entry.value == value and entry.text ~= nil then
+					return tostring(entry.text)
+				end
+			end
+		end
+
+		if value == nil then
+			return "(none)"
+		elseif type(value) == "boolean" then
+			return cond(value, "On", "Off")
+		elseif type(value) == "number" then
+			local digits = type(var.format) == "string" and tonumber(string.match(var.format, "^[Ff](%d+)$")) or nil
+			if digits ~= nil then
+				return string.format("%." .. digits .. "f", value)
+			end
+			if value == math.floor(value) then
+				return string.format("%d", value)
+			end
+			return string.format("%.2f", value)
+		elseif type(value) == "string" then
+			if value == "" then
+				return "(none)"
+			end
+			if string.match(value, "^%x+%-%x+%-%x+%-%x+%-%x+$") then
+				--an asset/dice/brush id: meaningless to show
+				return "Custom"
+			end
+			if #value > 40 then
+				return string.sub(value, 1, 40) .. "..."
+			end
+			return value
+		elseif type(value) == "userdata" then
+			local ok, hex = pcall(function() return value.tostring end)
+			if ok and type(hex) == "string" then
+				return hex, value
+			end
+		end
+
+		return "Custom"
+	end
+
+	local CollectNonDefaultSettings = function()
+		local canSeeGameWide = dmhub.inGame and dmhub.isDM
+		local result = {}
+		for _,var in ipairs(SettingsOrdered) do
+			local storage = string.lower(var.storage or "preference")
+			local gameWide = IsGameWideStorage(storage)
+			local eligible = var.editor ~= nil and storage ~= "transient"
+				and (canSeeGameWide or not gameWide)
+				and (dmhub.inGame or storage ~= "pergamepreference")
+			if eligible then
+				local okValue, value = pcall(dmhub.GetSettingValue, var.id)
+				local okDefault, default = pcall(dmhub.GetSettingDefault, var.id)
+				--an unreadable value (no account yet, no map) is not listed
+				if okValue and okDefault and not (storage == "account" and value == nil)
+						and not ResetSettingValuesEqual(value, default) then
+					result[#result+1] = {
+						id = var.id,
+						var = var,
+						storage = storage,
+						gameWide = gameWide,
+						name = (var.description ~= nil and var.description ~= "") and var.description or var.id,
+						value = value,
+						default = default,
+					}
+				end
+			end
+		end
+
+		--several editors reuse a short caption ("Brush"); tell those apart by id
+		local nameCounts = {}
+		for _,item in ipairs(result) do
+			nameCounts[item.name] = (nameCounts[item.name] or 0) + 1
+		end
+		for _,item in ipairs(result) do
+			if nameCounts[item.name] > 1 then
+				item.name = string.format("%s (%s)", item.name, item.id)
+			end
+		end
+
+		table.sort(result, function(a, b)
+			if a.gameWide ~= b.gameWide then
+				return b.gameWide
+			end
+			return string.lower(a.name) < string.lower(b.name)
+		end)
+
+		return result
+	end
+
+	local ResetOneSetting = function(item)
+		if item.storage == "map" then
+			--drop the map's explicit value so it tracks the game-wide default
+			dmhub.ResetSettingToDefault(item.id)
+		else
+			dmhub.ResetSetting(item.id)
+		end
+	end
+
+	--Hosted as an overlay on m_screenRoot for the same reason as the restart
+	--prompt below: the titlescreen has no modal layer.
+	local m_resetSettingsDialog = nil
+	local ShowResetSettingsDialog = function()
+		if m_resetSettingsDialog ~= nil and m_resetSettingsDialog.valid then
+			return
+		end
+		if m_screenRoot == nil or not m_screenRoot.valid then
+			return
+		end
+
+		local Dismiss = function()
+			if m_resetSettingsDialog ~= nil and m_resetSettingsDialog.valid then
+				m_resetSettingsDialog:DestroySelf()
+			end
+			m_resetSettingsDialog = nil
+		end
+
+		local m_confirmingResetAll = false
+
+		local listPanel = gui.Panel{
+			width = "100%",
+			height = 560,
+			vscroll = true,
+			flow = "vertical",
+			rpad = 12,
+			borderBox = true,
+		}
+
+		local summaryLabel = gui.Label{
+			classes = {"sizeM"},
+			width = "100%",
+			height = "auto",
+			textAlignment = "center",
+			bmargin = 10,
+			text = "",
+		}
+
+		local resetAllButton
+
+		local Refresh
+		Refresh = function()
+			local items = CollectNonDefaultSettings()
+
+			local personalCount = 0
+			local rows = {}
+			for _,item in ipairs(items) do
+				if not item.gameWide then
+					personalCount = personalCount + 1
+				end
+
+				local currentText, currentColor = FormatResetSettingValue(item.var, item.value)
+				local defaultText, defaultColor = FormatResetSettingValue(item.var, item.default)
+
+				local valuePanel = function(caption, text, color)
+					return gui.Panel{
+						flow = "horizontal",
+						width = "auto",
+						height = "auto",
+						rmargin = 18,
+						gui.Label{
+							classes = {"sizeS", "fgMuted"},
+							width = "auto",
+							height = "auto",
+							text = caption .. ": " .. text,
+						},
+						--the swatch paints the setting's own value, so its
+						--fill is data, not theme
+						color ~= nil and gui.Panel{
+							classes = {"bordered"},
+							width = 14,
+							height = 14,
+							lmargin = 6,
+							valign = "center",
+							bgcolor = color,
+						} or nil,
+					}
+				end
+
+				rows[#rows+1] = gui.Panel{
+					flow = "horizontal",
+					width = "100%",
+					height = "auto",
+					vpad = 6,
+					borderBox = true,
+
+					gui.Panel{
+						flow = "vertical",
+						width = "100%-70",
+						height = "auto",
+						valign = "center",
+
+						gui.Label{
+							classes = {"sizeM"},
+							width = "100%",
+							height = "auto",
+							text = item.name,
+							hover = item.var.help ~= nil and gui.Tooltip(item.var.help) or nil,
+						},
+
+						gui.Panel{
+							flow = "horizontal",
+							width = "100%",
+							height = "auto",
+							tmargin = 2,
+							valuePanel("Current", currentText, currentColor),
+							valuePanel("Default", defaultText, defaultColor),
+							item.gameWide and gui.Label{
+								classes = {"sizeS", "warning"},
+								width = "auto",
+								height = "auto",
+								text = "Affects everyone in the game",
+							} or nil,
+						},
+					},
+
+					gui.Button{
+						classes = {"sizeS"},
+						halign = "right",
+						valign = "center",
+						text = "Reset",
+						click = function(element)
+							ResetOneSetting(item)
+							m_confirmingResetAll = false
+							Refresh()
+						end,
+					},
+				}
+			end
+
+			listPanel.children = rows
+
+			if #items == 0 then
+				summaryLabel.text = "All of your settings are at their defaults."
+			elseif personalCount < #items then
+				summaryLabel.text = "These settings differ from their defaults. Reset All resets your own settings; game-wide settings are reset one at a time."
+			else
+				summaryLabel.text = "These settings differ from their defaults."
+			end
+
+			resetAllButton:SetClass("hidden", personalCount == 0)
+			resetAllButton.text = cond(m_confirmingResetAll, "Confirm Reset All", "Reset All")
+		end
+
+		resetAllButton = gui.Button{
+			classes = {"sizeL"},
+			hmargin = 6,
+			halign = "center",
+			valign = "center",
+			text = "Reset All",
+			click = function(element)
+				--Two clicks: this can clear things like the display name and
+				--equipped dice, and there is no undo.
+				if not m_confirmingResetAll then
+					m_confirmingResetAll = true
+					Refresh()
+					return
+				end
+
+				m_confirmingResetAll = false
+				for _,item in ipairs(CollectNonDefaultSettings()) do
+					if not item.gameWide then
+						ResetOneSetting(item)
+					end
+				end
+				Refresh()
+			end,
+		}
+
+		m_resetSettingsDialog = gui.Panel{
+			floating = true,
+			width = "100%",
+			height = "100%",
+			halign = "center",
+			valign = "center",
+			bgimage = "panels/square.png",
+			bgcolor = "#000000cc",
+
+			gui.Panel{
+				classes = {"dialog"},
+				styles = ThemeEngine.GetStyles(),
+				width = 820,
+				height = "auto",
+				halign = "center",
+				valign = "center",
+				flow = "vertical",
+				pad = 20,
+				borderBox = true,
+
+				gui.Label{
+					classes = {"dialogTitle"},
+					text = "Reset Settings",
+					halign = "center",
+					bmargin = 8,
+				},
+
+				summaryLabel,
+				listPanel,
+
+				gui.Panel{
+					flow = "horizontal",
+					width = "auto",
+					height = "auto",
+					halign = "center",
+					tmargin = 14,
+
+					resetAllButton,
+
+					gui.Button{
+						classes = {"sizeL"},
+						hmargin = 6,
+						halign = "center",
+						valign = "center",
+						text = "Close",
+						--above the settings dialog's own Close (priority 1),
+						--so Escape closes this list, not the whole screen.
+						escapeActivates = true,
+						escapePriority = 5,
+						click = function(element)
+							Dismiss()
+						end,
+					},
+				},
+			},
+		}
+
+		m_screenRoot:AddChild(m_resetSettingsDialog)
+		Refresh()
+	end
+
 	--Some settings only take effect at startup (dmhub.settingsChangesRequireRestart).
 	--Closing this dialog after changing one used to quit the app instantly, with no
 	--warning beyond the small caption at the bottom of the screen - from the user's
@@ -6517,6 +6901,19 @@ function CreateSettingsScreen(dialog, args)
 					end
 
 					dialog.sheet = nil
+				end,
+			},
+
+			gui.Button{
+				bgimage = true,
+				text = "Reset Settings...",
+				floating = true,
+				halign = "right",
+				valign = "bottom",
+				hmargin = 20,
+				vmargin = 59,
+				click = function()
+					ShowResetSettingsDialog()
 				end,
 			},
 

@@ -199,6 +199,43 @@ end
 --rename field and the loading-screen cover art picker that used to live in
 --the row's click-to-focus edit strip.
 local function ShowMapSettings(map)
+	--Imported map images (objects with a Map component), one per layer, for the
+	--Reimport Map Sizing buttons. Only the current map has its objects loaded;
+	--reading objects on any other map raises, so other maps get no buttons.
+	local mapImages = {}
+	local currentMap = game.currentMap
+	if currentMap ~= nil and map.valid and map.id == game.currentMapId then
+		for _, layer in ipairs(currentMap.floors) do
+			for _, obj in pairs(layer.objects) do
+				if obj:GetComponent("Map") ~= nil then
+					mapImages[#mapImages+1] = { layer = layer, obj = obj }
+					break
+				end
+			end
+		end
+	end
+
+	local reimportButtons = {}
+	for _, entry in ipairs(mapImages) do
+		local text = "Reimport Map Sizing"
+		if #mapImages > 1 then
+			text = string.format("Reimport Map Sizing (%s)", entry.layer.description or "Layer")
+		end
+		reimportButtons[#reimportButtons+1] = gui.Button{
+			classes = {"sizeM"},
+			width = "auto",
+			halign = "left",
+			vmargin = 4,
+			text = text,
+			click = function(element)
+				--Close this dialog first: the reimport dialog is its own modal and
+				--closes only the top modal when applied.
+				gui.CloseModal()
+				mod.shared.ReimportMapSizing(entry.layer, entry.obj)
+			end,
+		}
+	end
+
 	local dialogPanel = gui.Panel{
 		classes = {"framedPanel"},
 		width = 480,
@@ -308,6 +345,13 @@ local function ShowMapSettings(map)
 						}
 					}
 				},
+			},
+
+			gui.Panel{
+				classes = {"formStackedRow", cond(#reimportButtons == 0, "collapsed")},
+				vmargin = 8,
+				flow = "vertical",
+				children = reimportButtons,
 			},
 
 			gui.Panel{

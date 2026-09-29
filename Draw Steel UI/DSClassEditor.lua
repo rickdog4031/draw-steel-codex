@@ -1116,7 +1116,7 @@ end
 
 local SetClass = function(tableName, classPanel, classid)
 	local classTable = dmhub.GetTable(tableName) or {}
-	local class = classTable[classid]
+	local class = classTable[classid] --[[@as Class]]
 
     if classPanel.data.DoUploadIfNeeded ~= nil then
         classPanel.data.DoUploadIfNeeded()

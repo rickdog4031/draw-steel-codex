@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityDisguiseBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityDisguiseBehavior
 ActivatedAbilityDisguiseBehavior = RegisterGameType("ActivatedAbilityDisguiseBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityDisguiseBehavior.summary = 'Disguises as Another Creature'
@@ -17,6 +18,29 @@ ActivatedAbility.RegisterType
 	end
 }
 
+--The disguise only copies the source's token art, so also record the body traits
+--(footprints, blood) of the creature being imitated: while the disguise shows, the
+--disguised creature walks and bleeds like it (creature:GetFormBodyTrait).
+--- @param tok CharacterToken the creature taking the disguise
+--- @param sourceProps Creature the creature it now looks like
+local function RecordDisguiseTraits(tok, sourceProps)
+    if tok.properties == nil or sourceProps == nil then
+        return
+    end
+
+    local traits = sourceProps:CaptureBodyTraits()
+    --never empty (all-default traits must still count as a form), and handy when debugging.
+    traits.source = sourceProps:try_get("monster_type") or "creature"
+
+    tok:ModifyProperties{
+        description = "Disguise",
+        combine = true,
+        execute = function()
+            tok.properties.disguiseTraits = traits
+        end,
+    }
+end
+
 function ActivatedAbilityDisguiseBehavior:Cast(ability, casterToken, targets, options)
     if self.mode == "bestiary" then
         for _,target in ipairs(targets) do
@@ -25,6 +49,7 @@ function ActivatedAbilityDisguiseBehavior:Cast(ability, casterToken, targets, op
                 local monster = assets.monsters[self.monsterType]
                 if monster ~= nil then
                     tok:DisguiseAs(monster.info, self:try_get("appearanceName", nil))
+                    RecordDisguiseTraits(tok, monster.properties)
                 end
             end
         end
@@ -33,6 +58,7 @@ function ActivatedAbilityDisguiseBehavior:Cast(ability, casterToken, targets, op
             local tok = target.token
             if tok ~= nil and tok.valid then
                 casterToken:DisguiseAs(tok, self:try_get("appearanceName", nil))
+                RecordDisguiseTraits(casterToken, tok.properties)
                 break
             end
         end

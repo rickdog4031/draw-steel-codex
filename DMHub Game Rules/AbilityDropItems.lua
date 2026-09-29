@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityDropItemsBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityDropItemsBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field slotTarget string Equipment slot to drop items from (e.g. "hands").
 --- @field number string|number Number of items to drop, or "all".

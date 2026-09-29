@@ -4,6 +4,8 @@ local mod = dmhub.GetModLoading()
 --to control how they manage their resources.
 
 --- @class CharacterResource: GameType
+--- @field new fun(o?: table): CharacterResource
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 CharacterResource = RegisterGameType("CharacterResource")
 
 local g_sharedGlobalResourceDoc = "globalResourcesv2"
@@ -1268,6 +1270,7 @@ dmhub.RegisterEventHandler("refreshTables", function(updated)
 end)
 
 --- @class CharacterResourceCollection: GameType
+--- @field new fun(o?: table): CharacterResourceCollection
 --- @field helpSymbols table GoblinScript help symbol table for this collection (keyed by resource name).
 --- @field lookupSymbols table GoblinScript lookup symbols populated from resource table data.
 --- Represents all resources a character currently has, used as the GoblinScript "resources" object.

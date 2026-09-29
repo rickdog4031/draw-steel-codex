@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 ---@class RichScene: RichTag
+--- @field new fun(o?: table): RichScene
 RichScene = RegisterGameType("RichScene", "RichTag")
 RichScene.tag = "scene"
 RichScene.image = false

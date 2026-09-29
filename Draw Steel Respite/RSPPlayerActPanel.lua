@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 --- Player Step 2: doing the downtime, and saying when you are finished.
 --- @class RSPPlayerActPanel: GameType
+--- @field new fun(o?: table): RSPPlayerActPanel
 RSPPlayerActPanel = RegisterGameType("RSPPlayerActPanel")
 
 local INSTRUCTIONS = [[

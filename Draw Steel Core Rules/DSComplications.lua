@@ -1,7 +1,9 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterComplication:CharacterFeat
---- @field tableName string Data table name ("complications").
+--- @field new fun(o?: table): CharacterComplication
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
+--- @field tableName "complications" Data table name ("complications").
 --- @field name string Display name.
 --- @field description string Overview text.
 --- @field prerequisite string|number|table GoblinScript prerequisite expression.

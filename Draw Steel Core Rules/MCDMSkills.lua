@@ -1,8 +1,10 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Skill: GameType
+--- @field new fun(o?: table): Skill
 Skill = RegisterGameType("Skill")
 --- @class SkillSpecialization: GameType
+--- @field new fun(o?: table): SkillSpecialization
 SkillSpecialization = RegisterGameType("SkillSpecialization")
 
 Skill.tableName = "Skills"

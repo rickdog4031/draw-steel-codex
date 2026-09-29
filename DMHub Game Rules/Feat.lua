@@ -1,9 +1,11 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterFeat: GameType
+--- @field new fun(o?: table): CharacterFeat
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of the feat.
 --- @field description string Rules text.
---- @field tableName string Data table name ("feats").
+--- @field tableName "feats" Data table name ("feats").
 --- @field prerequisite string|number|table Text description of prerequisites.
 --- @field tag string Comma-separated tags (e.g. "feat", "general").
 CharacterFeat = RegisterGameType("CharacterFeat")
@@ -160,7 +162,7 @@ end
 
 local SetFeat = function(tableName, featPanel, featid)
 	local featsTable = dmhub.GetTable(tableName) or {}
-	local feat = featsTable[featid]
+	local feat = featsTable[featid] --[[@as CharacterFeat]]
 	local UploadFeat = function()
 		dmhub.SetAndUploadTableItem(tableName, feat)
 	end
@@ -298,6 +300,7 @@ function CharacterFeat.CreateEditor()
 end
 
 --- @class CharacterFeatChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterFeatChoice
 --- @field name string Display name ("Feat").
 --- @field description string Prompt shown to the player.
 --- @field tag string Comma-separated tags filtering which feats are available.
@@ -535,6 +538,7 @@ end
 
 
 --- @class CharacterTemplate:CharacterFeat
+--- @field new fun(o?: table): CharacterTemplate
 --- Variant of CharacterFeat used for creature templates (e.g. "Half-Dragon").
 --variant of feats for creature templates.
 CharacterTemplate = RegisterGameType("CharacterTemplate", "CharacterFeat")
@@ -553,6 +557,7 @@ function CharacterTemplate:FeatureSourceName()
 end
 
 --- @class CharacterSingleFeat: GameType
+--- @field new fun(o?: table): CharacterSingleFeat
 --- @field featid string Id of the specific feat granted (or "none").
 --- @field name string Display name ("Single Feat").
 --- A CharacterFeature-like wrapper that grants exactly one specific feat.

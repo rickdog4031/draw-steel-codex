@@ -2,7 +2,7 @@ local mod = dmhub.GetModLoading()
 
 local SetDeity = function(tableName, deityPanel, deityId)
     local deityTable = dmhub.GetTable(tableName) or {}
-    local deity = deityTable[deityId]
+    local deity = deityTable[deityId] --[[@as Deity]]
     
     if not deity then
         deityPanel.children = {}

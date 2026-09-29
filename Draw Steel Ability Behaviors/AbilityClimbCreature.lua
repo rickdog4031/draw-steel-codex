@@ -28,6 +28,7 @@ local mod = dmhub.GetModLoading()
 --    getting off (the tier 2 slide, or a DM shoving a rider off directly).
 
 --- @class ActivatedAbilityClimbCreatureBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityClimbCreatureBehavior
 --- @field operation string
 --- @field dismountFalls boolean
 ActivatedAbilityClimbCreatureBehavior = RegisterGameType("ActivatedAbilityClimbCreatureBehavior", "ActivatedAbilityBehavior")

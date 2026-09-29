@@ -1,6 +1,7 @@
 --- Confirmation Dialog - Reusable confirmation dialog for modal windows
 --- Provides consistent confirmation UI with standardized styling
 --- @class DTConfirmationDialog: GameType
+--- @field new fun(o?: table): DTConfirmationDialog
 DTConfirmationDialog = RegisterGameType("DTConfirmationDialog")
 
 local WIDTH = 500

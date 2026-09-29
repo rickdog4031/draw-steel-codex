@@ -46,6 +46,11 @@ local function ObjectNodeHasComponent(id, componentType)
     return false
 end
 
+--Your Other Games previews by "gameid/mapid", kept for the session so the
+--dialog reopens without downloading them again: false while in flight,
+--then the game.GetOtherGameMapPreview result (or {failed = true}).
+local s_otherGamePreviews = {}
+
 mod.shared.ShowCreateMapDialog = function()
 
     local selectedMap = nil
@@ -56,6 +61,8 @@ mod.shared.ShowCreateMapDialog = function()
     --active filter row when the rows arrive after the async pack sync.
     local m_mainMode = "empty"
     local m_packEntry = nil
+    --the map picked in the Your Other Games section: {gameid, mapid, name}.
+    local m_otherEntry = nil
     local m_packEntries = {}
     local m_search = ""
     local m_dialog = nil
@@ -1035,11 +1042,15 @@ mod.shared.ShowCreateMapDialog = function()
     UpdateCreateButton = function()
         local mode = "create"
         local locked = false
-        if m_packEntry ~= nil then
+        if m_mainMode == "othergames" then
+            --Import Map, disabled until a map is picked.
+            mode = "import"
+            locked = m_otherEntry == nil
+        elseif m_packEntry ~= nil then
             mode = "add"
             locked = mod.shared.MapPackPatreonState(m_packEntry) == "locked"
         end
-        createButton.text = cond(mode == "create", "Create Map", "Add Map")
+        createButton.text = cond(mode == "create", "Create Map", cond(mode == "import", "Import Map", "Add Map"))
         createButton:SetClass("disabled", locked)
     end
 
@@ -1299,6 +1310,35 @@ mod.shared.ShowCreateMapDialog = function()
         }
     end
 
+    --copies a map out of another of the user's games, then travels to it.
+    local ImportOtherGameMap = function(entry, name)
+        game.ImportMapFromOtherGame{
+            gameid = entry.gameid,
+            mapid = entry.mapid,
+            name = name,
+            success = function(mapid)
+                dmhub.Coroutine(function()
+                    for i = 1, 200 do
+                        if game.GetMap(mapid) ~= nil then
+                            break
+                        end
+                        coroutine.yield(0.05)
+                    end
+                    local map = game.GetMap(mapid)
+                    if map ~= nil then
+                        map:Travel()
+                    end
+                end)
+            end,
+            error = function(msg)
+                gui.ModalMessage{
+                    title = "Could not import map",
+                    message = msg,
+                }
+            end,
+        }
+    end
+
     nameInput = gui.Input{
         classes = {"form"},
         text = m_mapName,
@@ -1332,6 +1372,16 @@ mod.shared.ShowCreateMapDialog = function()
             --disabled = the selected appearance is Patreon-gated; the
             --access strip's button carries the unlock action.
             if element:HasClass("disabled") then
+                return
+            end
+
+            if m_mainMode == "othergames" then
+                if m_otherEntry ~= nil then
+                    local entry = m_otherEntry
+                    local name = m_mapName
+                    gui.CloseModal()
+                    ImportOtherGameMap(entry, name)
+                end
                 return
             end
 
@@ -1836,6 +1886,40 @@ mod.shared.ShowCreateMapDialog = function()
         },
     }
 
+    --Your Other Games: the other games this account is a Director of. Only
+    --the lobby's local game list is read here; the section loads nothing
+    --until it is opened (OpenOtherGames, assigned with its view below).
+    local m_otherGames = {}
+    for _, g in ipairs(lobby.games or {}) do
+        if g.gameid ~= dmhub.gameid and g:IsDM() then
+            m_otherGames[#m_otherGames + 1] = g
+        end
+    end
+    table.sort(m_otherGames, function(a, b)
+        return string.lower(a.description or "") < string.lower(b.description or "")
+    end)
+    local OpenOtherGames
+    if #m_otherGames > 0 then
+        local children = sourceNav.children
+        children[#children + 1] = gui.Panel{
+            classes = {"cmNavItem"},
+            flow = "horizontal",
+            data = { type = "othergames" },
+            --not MapItemPress: selectedMap stays the blank/import fallback
+            --the create button uses outside this section.
+            press = function(element)
+                for _, el in ipairs(element.parent.children) do
+                    el:SetClass("selected", el == element)
+                end
+                OpenOtherGames()
+            end,
+            gui.Panel{ classes = {"cmNavIcon"}, halign = "left", bgimage = "phosphor/stack-plus.png" },
+            gui.Label{ classes = {"cmNavLabel"}, halign = "left", text = "Your Other Games" },
+            gui.Label{ classes = {"cmNavCount"}, text = tostring(#m_otherGames) },
+        }
+        sourceNav.children = children
+    end
+
     --library filters: All Maps plus one row per pack, labeled with the
     --creator's display name once the async lookup lands. Pressing one
     --brings the library view up in the main area (GoToLibrary, assigned
@@ -2241,16 +2325,423 @@ mod.shared.ShowCreateMapDialog = function()
         },
     }
 
+    --Your Other Games: the games down the left, the picked game's maps as
+    --tiles on the right. A game's map list is fetched when it is picked, and
+    --a preview only for each tile actually built (they come a chunk at a
+    --time, like the library grid). A map made from an imported image
+    --previews that image; a map built by hand says so instead.
+    local OTHER_GAMES_WIDTH = 290
+    local MAX_PREVIEWS_IN_FLIGHT = 2
+
+    tileStyles[#tileStyles + 1] = {
+        selectors = {"cmOtherGameRow"},
+        height = 44,
+        rpad = 8,
+    }
+    tileStyles[#tileStyles + 1] = {
+        selectors = {"cmOtherCover"},
+        width = 48,
+        height = 30,
+        halign = "left",
+        valign = "center",
+        rmargin = 10,
+        cornerRadius = 4,
+        bgcolor = "white",
+    }
+    tileStyles[#tileStyles + 1] = {
+        selectors = {"cmOtherGameLabel"},
+        fontSize = 13,
+        color = "@fg",
+        width = OTHER_GAMES_WIDTH - 12 - 8 - 48 - 10 - 34,
+        height = "auto",
+        halign = "left",
+        valign = "center",
+        textWrap = true,
+    }
+    tileStyles[#tileStyles + 1] = {
+        selectors = {"cmOtherGameLabel", "parent:selected"},
+        bold = true,
+        color = "@fgStrong",
+    }
+    --a preview image of unknown size, fitted inside the tile at its aspect.
+    tileStyles[#tileStyles + 1] = {
+        selectors = {"mapPackTileImage", "cmOtherThumbFit"},
+        width = "auto",
+        height = "auto",
+        maxWidth = cellW - 12,
+        maxHeight = cellH - 12,
+        autosizeimage = true,
+        halign = "center",
+        valign = "center",
+        priority = 5,
+    }
+    tileStyles[#tileStyles + 1] = {
+        selectors = {"cmOtherGlyph"},
+        width = 36,
+        height = 36,
+        halign = "center",
+        bgcolor = "@fgMuted",
+    }
+    tileStyles[#tileStyles + 1] = {
+        selectors = {"cmOtherNote"},
+        fontSize = 13,
+        color = "@fgMuted",
+        width = "auto",
+        height = "auto",
+        halign = "center",
+        tmargin = 8,
+    }
+
+    local m_otherGameId = nil
+    --gameid -> {loading = true} | {maps = {...}} | {error = message}
+    local m_otherMaps = {}
+    local m_otherShown = GRID_CHUNK
+    local m_previewQueue = {}
+    local m_previewsInFlight = 0
+
+    local otherStatus = gui.Label{
+        classes = {"mapPackStatus"},
+        halign = "left",
+        vmargin = 6,
+        text = "",
+    }
+    local otherGrid = gui.Panel{
+        width = GRID_COLUMNS * cellW + 4,
+        height = "auto",
+        maxHeight = DIALOG_HEIGHT - 56 - FOOTER_HEIGHT - 12 - 34,
+        flow = "horizontal",
+        wrap = true,
+        valign = "top",
+        halign = "left",
+        vscroll = true,
+    }
+    local otherGamesList = gui.Panel{
+        width = OTHER_GAMES_WIDTH,
+        height = "100%",
+        halign = "left",
+        valign = "top",
+        flow = "vertical",
+        vscroll = true,
+    }
+
+    --shows a preview result on its tile: the image covering the cell, or
+    --the created-map note.
+    local ApplyOtherPreview = function(tile, result)
+        local d = tile.data
+        if result == nil or result == false then
+            return
+        end
+        if result.failed then
+            d.note.text = "Preview unavailable"
+            return
+        end
+        if not result.imported then
+            d.note.text = "Created Map"
+            return
+        end
+        if result.imageid == nil then
+            d.note.text = "Imported Map"
+            return
+        end
+        if (tonumber(result.width) or 0) > 0 and (tonumber(result.height) or 0) > 0 then
+            --known size: cover the cell like the library tiles.
+            local w, h = mod.shared.MapPackCoverSize({ tilesW = result.width, tilesH = result.height }, d.tileW, d.tileH)
+            d.thumb.selfStyle.width = w
+            d.thumb.selfStyle.height = h
+        else
+            --map images rarely record their size: fit the image inside the
+            --cell at its own aspect instead of stretching it.
+            d.thumb:SetClass("cmOtherThumbFit", true)
+        end
+        d.thumb.bgimage = result.imageid
+        d.thumb:SetClass("hidden", false)
+        d.placeholder:SetClass("hidden", true)
+    end
+
+    local PumpPreviews
+    PumpPreviews = function()
+        if m_dialog == nil or not m_dialog.valid then
+            m_previewQueue = {}
+            return
+        end
+        while m_previewsInFlight < MAX_PREVIEWS_IN_FLIGHT and #m_previewQueue > 0 do
+            local job = table.remove(m_previewQueue, 1)
+            --a job for a game no longer showing is dropped; it is queued
+            --again if that game is picked again.
+            if job.gameid == m_otherGameId and s_otherGamePreviews[job.key] == nil then
+                s_otherGamePreviews[job.key] = false
+                m_previewsInFlight = m_previewsInFlight + 1
+                local Done = function(result)
+                    m_previewsInFlight = m_previewsInFlight - 1
+                    s_otherGamePreviews[job.key] = result
+                    if otherGrid.valid then
+                        for _, tile in ipairs(otherGrid.children) do
+                            if tile.data.key == job.key then
+                                ApplyOtherPreview(tile, result)
+                            end
+                        end
+                    end
+                    PumpPreviews()
+                end
+                game.GetOtherGameMapPreview{
+                    gameid = job.gameid,
+                    mapid = job.mapid,
+                    success = Done,
+                    error = function(msg)
+                        Done({ failed = true })
+                    end,
+                }
+            end
+        end
+    end
+
+    local SelectOtherMap = function(entry)
+        m_otherEntry = entry
+        for _, tile in ipairs(otherGrid.children) do
+            tile:SetClass("selected", tile.data.key ~= nil and m_otherEntry ~= nil and tile.data.key == m_otherEntry.gameid .. "/" .. m_otherEntry.mapid)
+        end
+        SetAutoName(entry.name)
+        UpdateCreateButton()
+    end
+
+    local OtherMapTile = function(gameid, map)
+        local key = gameid .. "/" .. map.id
+        local tileW, tileH = cellW - 12, cellH - 12
+        --sized by ApplyOtherPreview once the image's size is known.
+        local thumb = gui.Panel{
+            classes = {"mapPackTileImage", "hidden"},
+            halign = "center",
+            valign = "center",
+            interactable = false,
+        }
+        local note = gui.Label{
+            classes = {"cmOtherNote"},
+            text = "Loading...",
+            interactable = false,
+        }
+        local placeholder = gui.Panel{
+            width = "100%",
+            height = "auto",
+            valign = "center",
+            flow = "vertical",
+            interactable = false,
+            gui.Panel{
+                classes = {"cmOtherGlyph"},
+                bgimage = "phosphor/squares-four.png",
+                interactable = false,
+            },
+            note,
+        }
+        local tile = gui.Panel{
+            classes = {"mapPackTile"},
+            data = {
+                key = key,
+                thumb = thumb,
+                note = note,
+                placeholder = placeholder,
+                tileW = tileW,
+                tileH = tileH,
+            },
+            press = function(element)
+                SelectOtherMap{ gameid = gameid, mapid = map.id, name = map.name }
+            end,
+            gui.Panel{
+                classes = {"mapPackTileViewport"},
+                clip = true,
+                clipHidden = true,
+                interactable = false,
+                thumb,
+            },
+            placeholder,
+            gui.Panel{
+                width = "100%",
+                height = "auto",
+                valign = "bottom",
+                flow = "vertical",
+                interactable = false,
+                gui.Panel{
+                    classes = {"mapPackTileLabelBand"},
+                    interactable = false,
+                    gui.Label{
+                        classes = {"mapPackTileLabel"},
+                        text = cond(map.folder ~= nil and map.folder ~= "", string.format("%s\n<size=80%%>%s</size>", map.name, map.folder or ""), map.name),
+                        interactable = false,
+                    },
+                },
+            },
+            gui.Panel{
+                classes = {"mapPackTileFrame"},
+                interactable = false,
+            },
+        }
+        tile:SetClass("selected", m_otherEntry ~= nil and m_otherEntry.gameid == gameid and m_otherEntry.mapid == map.id)
+        return tile
+    end
+
+    local RenderOtherGrid
+    RenderOtherGrid = function()
+        if not otherGrid.valid then
+            return
+        end
+        local gameid = m_otherGameId
+        local info = gameid and m_otherMaps[gameid]
+        if info == nil or info.loading then
+            otherStatus.text = "Loading maps..."
+            otherGrid.children = {}
+            return
+        end
+        if info.error ~= nil then
+            otherStatus.text = string.format("Could not load this game's maps: %s", info.error)
+            otherGrid.children = {}
+            return
+        end
+
+        local maps = info.maps
+        if #maps == 0 then
+            otherStatus.text = "This game has no maps."
+        else
+            otherStatus.text = string.format("%d %s", #maps, cond(#maps == 1, "map", "maps"))
+        end
+
+        local count = math.min(#maps, m_otherShown)
+        local tiles = {}
+        for i = 1, count do
+            local map = maps[i]
+            local tile = OtherMapTile(gameid, map)
+            tiles[#tiles + 1] = tile
+            local key = tile.data.key
+            if s_otherGamePreviews[key] == nil then
+                m_previewQueue[#m_previewQueue + 1] = { gameid = gameid, mapid = map.id, key = key }
+            end
+        end
+        if #maps > count then
+            tiles[#tiles + 1] = gui.Panel{
+                classes = {"cmShowMore"},
+                data = {},
+                flow = "vertical",
+                press = function(element)
+                    m_otherShown = m_otherShown + GRID_CHUNK
+                    RenderOtherGrid()
+                end,
+                gui.Label{
+                    classes = {"cmShowMoreLabel"},
+                    text = string.format("Show More\n%d of %d", count, #maps),
+                },
+            }
+        end
+        otherGrid.children = tiles
+        for _, tile in ipairs(tiles) do
+            if tile.data.key ~= nil then
+                ApplyOtherPreview(tile, s_otherGamePreviews[tile.data.key])
+            end
+        end
+        PumpPreviews()
+    end
+
+    local SelectOtherGame = function(gameid)
+        if gameid ~= m_otherGameId then
+            m_otherGameId = gameid
+            m_otherShown = GRID_CHUNK
+            m_previewQueue = {}
+        end
+        for _, row in ipairs(otherGamesList.children) do
+            row:SetClass("selected", row.data.gameid == gameid)
+        end
+
+        local info = m_otherMaps[gameid]
+        if info == nil or info.error ~= nil then
+            m_otherMaps[gameid] = { loading = true }
+            game.ListOtherGameMaps{
+                gameid = gameid,
+                success = function(maps)
+                    m_otherMaps[gameid] = { maps = maps }
+                    if not otherGamesList.valid then
+                        return
+                    end
+                    for _, row in ipairs(otherGamesList.children) do
+                        if row.data.gameid == gameid then
+                            row.data.count.text = tostring(#maps)
+                        end
+                    end
+                    if m_otherGameId == gameid then
+                        RenderOtherGrid()
+                    end
+                end,
+                error = function(msg)
+                    m_otherMaps[gameid] = { error = msg }
+                    if otherGamesList.valid and m_otherGameId == gameid then
+                        RenderOtherGrid()
+                    end
+                end,
+            }
+        end
+        RenderOtherGrid()
+    end
+
+    local otherContent = gui.Panel{
+        classes = {"collapsed"},
+        width = contentGeometry.width,
+        height = contentGeometry.height,
+        halign = contentGeometry.halign,
+        valign = contentGeometry.valign,
+        tmargin = contentGeometry.tmargin,
+        flow = "horizontal",
+        otherGamesList,
+        gui.Panel{
+            width = string.format("100%%-%d", OTHER_GAMES_WIDTH + 16),
+            height = "100%",
+            halign = "right",
+            valign = "top",
+            flow = "vertical",
+            otherStatus,
+            otherGrid,
+        },
+    }
+
+    OpenOtherGames = function()
+        ClearPackSelection()
+        m_setMainMode("othergames")
+        --the game rows (and their cover art) are built on first open.
+        if #otherGamesList.children == 0 then
+            local rows = {}
+            for _, g in ipairs(m_otherGames) do
+                local count = gui.Label{ classes = {"cmNavCount"}, text = "" }
+                rows[#rows + 1] = gui.Panel{
+                    classes = {"cmNavItem", "cmOtherGameRow"},
+                    flow = "horizontal",
+                    data = { gameid = g.gameid, count = count },
+                    press = function(element)
+                        SelectOtherGame(element.data.gameid)
+                    end,
+                    gui.Panel{ classes = {"cmOtherCover"}, bgimage = g.coverart, interactable = false },
+                    gui.Label{ classes = {"cmOtherGameLabel"}, text = g.description or "", interactable = false },
+                    count,
+                }
+            end
+            otherGamesList.children = rows
+        end
+        SelectOtherGame(m_otherGameId or m_otherGames[1].gameid)
+    end
+
     local mainModePanels = {
         empty = blankContent,
         import = importContent,
         library = libraryContent,
+        othergames = otherContent,
     }
     m_setMainMode = function(mode)
         m_mainMode = mode
         for name, panel in pairs(mainModePanels) do
             panel:SetClass("collapsed", name ~= mode)
         end
+        --a map picked from another game belongs to that section only.
+        if mode ~= "othergames" and m_otherEntry ~= nil then
+            m_otherEntry = nil
+            for _, tile in ipairs(otherGrid.children) do
+                tile:SetClass("selected", false)
+            end
+        end
+        UpdateCreateButton()
         --leaving the library view unlights its rows, so only the
         --active source reads as selected.
         if mode ~= "library" then
@@ -2271,6 +2762,7 @@ mod.shared.ShowCreateMapDialog = function()
         blankContent,
         importContent,
         libraryContent,
+        otherContent,
 
         --footer action bar: the name travels with the commit buttons.
         gui.Panel{
@@ -2402,6 +2894,35 @@ local function isClockwise(polygon)
     end
 
     return sum > 0
+end
+
+-- Size the map's bounds to exactly the grid cells its map images cover. The
+-- engine measures the placed images, so this is right for any calibration and
+-- grid type; never compute bounds from image sizes in Lua. expandOnly grows
+-- the bounds without shrinking them. Call from a coroutine, after spawning or
+-- moving map images: it waits (up to 30s) until every image is placed. On
+-- timeout the bounds are left unchanged. Returns true if it fitted them.
+mod.shared.FitMapBoundsToImagesCo = function(map, expandOnly, description)
+    if map == nil then
+        return false
+    end
+
+    local status = nil
+    for attempt = 1, 600 do
+        status = map:FitDimensionsToMapImages(expandOnly == true)
+        if status ~= "pending" then
+            break
+        end
+        coroutine.yield(0.05)
+    end
+
+    if status == "fitted" then
+        map:Upload(description or "Fit map bounds to map images")
+        return true
+    end
+
+    printf("MAP_BOUNDS:: Could not fit bounds to map images (status=%s); leaving them unchanged", tostring(status))
+    return false
 end
 
 mod.shared.ImportMapToFloorCo = function(info)
@@ -3349,13 +3870,9 @@ mod.shared.FinishMapImport = function(mapName, info)
 
         local map = game.GetMap(guid)
         map.description = mapName
-        -- Bounds box: dimMin..dimMax (inclusive) covers exactly w cells in
-        -- x and h cells in y. For odd w/h the box is centered on origin.
-        -- For even w/h the box is biased RIGHT (center at +0.5) to match
-        -- the renderer's pivot wrap, which lands _mapPivot at 0.5-tileDim/2
-        -- for even-tile-count perfect fits and therefore shifts the image
-        -- right by half a tile. A left-biased box would appear "one tile
-        -- to the left of where it should be" relative to the image.
+        -- Provisional bounds of the right size, used only until the images
+        -- are placed; FitMapBoundsToImagesCo below then replaces them with
+        -- the cells the images actually cover.
         map.dimensions = {
             x1 = -math.ceil(w/2) + 1,
             y1 = -math.ceil(h/2) + 1,
@@ -3417,6 +3934,7 @@ mod.shared.FinishMapImport = function(mapName, info)
             }
         end
 
+        mod.shared.FitMapBoundsToImagesCo(game.GetMap(guid), false, "Fit map bounds to imported images")
     end)
 end
 
@@ -4497,57 +5015,11 @@ mod.shared.ReimportMapSizing = function(floor, mapObj)
 
             printf("REIMPORT:: Applied new calibration to object %s", mapObj.id)
 
-            -- Adjust map boundaries synchronously.
-            -- For the reimported floor: compute bounds from calibration data + object center
-            -- (don't read obj.area which is stale until re-render).
-            -- For other floors: read their area directly (they haven't changed).
-            local map = game.currentMap
-            if map ~= nil then
-                local objX = mapObj.x
-                local objY = mapObj.y
-                local floorX1 = objX - calibration.width / 2
-                local floorY1 = objY - calibration.height / 2
-                local floorX2 = objX + calibration.width / 2
-                local floorY2 = objY + calibration.height / 2
-                printf("REIMPORT:: Reimported floor bounds: (%.1f,%.1f)-(%.1f,%.1f) objPos=(%.1f,%.1f)",
-                    floorX1, floorY1, floorX2, floorY2, objX, objY)
-
-                -- Start with the reimported floor's computed bounds.
-                local newDimX1 = floorX1
-                local newDimY1 = floorY1
-                local newDimX2 = floorX2
-                local newDimY2 = floorY2
-
-                -- Union with all other map objects' areas (these are already rendered, not stale).
-                for _, f in ipairs(map.floors) do
-                    for _, obj in pairs(f.objects) do
-                        if obj:GetComponent("Map") ~= nil and obj.id ~= mapObj.id then
-                            local a = obj.area
-                            if a ~= nil then
-                                printf("REIMPORT::   Other floor obj %s area: (%.1f,%.1f)-(%.1f,%.1f)", obj.id, a.x1, a.y1, a.x2, a.y2)
-                                newDimX1 = math.min(newDimX1, a.x1)
-                                newDimY1 = math.min(newDimY1, a.y1)
-                                newDimX2 = math.max(newDimX2, a.x2)
-                                newDimY2 = math.max(newDimY2, a.y2)
-                            end
-                        end
-                    end
-                end
-
-                local dim = map.dimensions
-                printf("REIMPORT:: Old dims: (%s,%s)-(%s,%s)", json(dim.x1), json(dim.y1), json(dim.x2), json(dim.y2))
-                printf("REIMPORT:: New dims: (%.1f,%.1f)-(%.1f,%.1f)", newDimX1, newDimY1, newDimX2, newDimY2)
-
-                map.dimensions = {
-                    x1 = math.floor(newDimX1),
-                    y1 = math.floor(newDimY1),
-                    x2 = math.ceil(newDimX2),
-                    y2 = math.ceil(newDimY2),
-                }
-                map:Upload("Adjust map boundaries after reimport")
-                printf("REIMPORT:: Set map boundaries to (%d,%d)-(%d,%d)",
-                    math.floor(newDimX1), math.floor(newDimY1), math.ceil(newDimX2), math.ceil(newDimY2))
-            end
+            -- Refit the map bounds to the recalibrated image (and any other floors'
+            -- images), once the engine reports the new calibration is rendered.
+            dmhub.Coroutine(function()
+                mod.shared.FitMapBoundsToImagesCo(game.currentMap, false, "Adjust map boundaries after reimport")
+            end)
         end,
     }
 
@@ -4900,36 +5372,10 @@ mod.shared.FinishFloorImport = function(info, offsetX, offsetY)
         -- Label the layer.
         mapLayer.layerDescription = "Map Layer"
 
-        -- Step 3: Expand map dimensions to encompass the new floor.
-        -- Done here (after floor creation) to avoid conflicting manifest patches.
-        -- Skip in match mode: the new floor occupies the same world bounds as the
-        -- existing floor it's matching, which is already inside the canvas.
-        if info.matchCalibration ~= nil then
-            printf("FLOOR_IMPORT:: matchCalibration in effect; skipping canvas expansion.")
-        else
-            map = getMap()
-            if map ~= nil then
-                local dim = map.dimensions
-                local newX2 = offsetX + floorW
-                local newY2 = offsetY + floorH
-                local needsExpand = (offsetX < dim.x1 or offsetY < dim.y1 or newX2 > dim.x2 or newY2 > dim.y2)
-                if needsExpand then
-                    map.dimensions = {
-                        x1 = math.min(dim.x1, offsetX),
-                        y1 = math.min(dim.y1, offsetY),
-                        x2 = math.max(dim.x2, newX2),
-                        y2 = math.max(dim.y2, newY2),
-                    }
-                    map:Upload("Expand map for new floor")
-                    printf("FLOOR_IMPORT:: Expanded map dimensions")
-                end
-            end
-        end
-
         -- Brief sync pause before spawning.
         for i = 1, 30 do coroutine.yield(0.01) end
 
-        -- Step 4: Spawn the imported map image onto the layer.
+        -- Step 3: Spawn the imported map image onto the layer.
         -- If matchCalibration is present, we override the new object's controlPoints/scaling/mapType
         -- with the existing map's, and place it at the existing's (x, y) so the world bounds match.
         local applyMatch = info.matchCalibration ~= nil
@@ -4984,6 +5430,11 @@ mod.shared.FinishFloorImport = function(info, offsetX, offsetY)
                 end
             end
         end
+
+        -- Step 4: Grow the map bounds to cover the new floor's image. Done after
+        -- the floors exist (so manifest patches don't conflict) and after the
+        -- placement correction above, so the engine measures the final position.
+        mod.shared.FitMapBoundsToImagesCo(getMap(), true, "Expand map for new floor")
 
         -- Diagnostic: dump calibration for every Map LevelObject on the map (existing + new).
         printf("FLOOR_ALIGN_DIAG:: ===== Post-spawn calibration dump =====")

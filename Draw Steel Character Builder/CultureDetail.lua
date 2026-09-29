@@ -2,6 +2,7 @@
     Culture Detail
 ]]
 --- @class CBCultureDetail: GameType
+--- @field new fun(o?: table): CBCultureDetail
 CBCultureDetail = RegisterGameType("CBCultureDetail")
 
 local SEL = CharacterBuilder.SELECTOR

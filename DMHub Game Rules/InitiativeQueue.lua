@@ -15,6 +15,7 @@ local mod = dmhub.GetModLoading()
 -- When a token ends their turn, their initiative entry has the current round incremented.
 
 --- @class InitiativeQueue: GameType
+--- @field new fun(o?: table): InitiativeQueue
 --- @field guid string Unique identifier.
 --- @field round number Current combat round (starts at 1).
 --- @field hidden boolean If true, initiative is hidden from players.
@@ -24,6 +25,7 @@ local mod = dmhub.GetModLoading()
 InitiativeQueue = RegisterGameType("InitiativeQueue")
 
 --- @class InitiativeQueueEntry: GameType
+--- @field new fun(o?: table): InitiativeQueueEntry
 --- @field round number The round at which this entry will next act (incremented when their turn ends).
 --- @field initiative number Initiative roll result.
 --- @field dexterity number Dexterity score used for tie-breaking.

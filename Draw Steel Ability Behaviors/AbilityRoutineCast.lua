@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityRoutineControlBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityRoutineControlBehavior
 ActivatedAbilityRoutineControlBehavior = RegisterGameType("ActivatedAbilityRoutineControlBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityRoutineControlBehavior.summary = "Routine Control"

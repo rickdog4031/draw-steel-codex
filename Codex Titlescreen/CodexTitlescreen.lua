@@ -1573,21 +1573,49 @@ local function CreateJoinGameModal(tokenToImport)
     return resultPanel
 end
 
-local g_moduleOptions = {
+-- The Draw Steel adventures offered on the "Create New Campaign" screen, in
+-- display order. Each is a published module; the first one selected becomes
+-- the game's startingModule (it supplies the starting map) and the rest are
+-- installed alongside it through additionalModules. Entries with `store`
+-- are sold in the shop: they show as buyable when the user does not own them
+-- (only while the shop lists them), and their cover art, price and blurb come
+-- from the shop item. `free` entries never need buying. `default` entries
+-- start selected. The user's favorite modules (ModuleFavorites, starred in
+-- the module browser) are appended at runtime.
+local g_adventureOptions = {
     {
         id = "venla-deliantomb",
         text = "The Delian Tomb",
         descriptionDetails =
         "This is the classic starter adventure from Matt Colville's Running the Game series, expanded and updated for MCDM's new fantasy RPG Draw Steel! The Delian Tomb includes everything you need to get started including a step-by-step tutorial for both players and directors!",
         coverart = "panels/backgrounds/delian-tomb-bg.png",
+        -- Built-in art: gui.GetImageDimensionsCallback does not answer for
+        -- bundled UI images, so the size is recorded here for the cover fit.
+        coverWidth = 3840,
+        coverHeight = 2160,
+        free = true,
+        default = true,
     },
     {
-        id = "mcdm-startermap",
-        text = "Custom Campaign",
-        descriptionDetails =
-        "Forge your own adventure! We'll start you in a tavern with all the Draw Steel rules and you can take it from there.",
-        coverart = "panels/backgrounds/mcdm-cinematic.jpeg",
+        id = "codex-redroad",
+        text = "The Red Road",
+        store = true,
     },
+    {
+        id = "codex-darkheart",
+        text = "The Dark Heart of the Wood",
+        store = true,
+    },
+}
+
+-- What a Draw Steel campaign starts from when no adventure is selected: the
+-- starter map's tavern, with just the core rules.
+local g_customCampaignOption = {
+    id = "mcdm-startermap",
+    text = "Custom Campaign",
+    descriptionDetails =
+    "Forge your own adventure! We'll start you in a tavern with all the Draw Steel rules and you can take it from there.",
+    coverart = "panels/backgrounds/mcdm-cinematic.jpeg",
 }
 
 -- Community game types, only offered when the "Allow Community Game Types"
@@ -4190,6 +4218,9 @@ function CreateGameLoadingScreen(moduleInfo, backend)
         -- noSystemModule = true to suppress the mcdm-drawsteel injection.
         startingModule = moduleInfo.startingModule or moduleInfo.id,
         noSystemModule = moduleInfo.noSystemModule == true,
+        -- Multi-select on the create screen: further adventures to install
+        -- alongside the starting module. Engines that predate this ignore it.
+        additionalModules = moduleInfo.additionalModules or {},
         backend = backend or "local",
         create = function(gameid)
             if resultPanel == nil or not resultPanel.valid then
@@ -4210,57 +4241,992 @@ function CreateGameLoadingScreen(moduleInfo, backend)
 end
 
 function CreateGameDialog()
-    -- Build the module list for this dialog. Admins get an extra "No Module"
-    -- option that creates an empty game with no starter map and no system
-    -- (mcdm-drawsteel) module -- it enters a blank map with zero modules.
-    -- startingModule = "" tells C# to skip the starter-map install;
-    -- noSystemModule = true tells C# to set GameDetails.noSystemModule so the
-    -- system module is never injected.
-    local m_moduleOptions = {}
-    for _, module in ipairs(g_moduleOptions) do
-        m_moduleOptions[#m_moduleOptions + 1] = module
-    end
-    -- Community game types (e.g. Crows) are offered only when the user has
-    -- opted in via the "Allow Community Game Types" preference.
-    if g_allowCommunityGameTypes:Get() then
-        for _, module in ipairs(g_communityModuleOptions) do
-            m_moduleOptions[#m_moduleOptions + 1] = module
-        end
-    end
-    if dmhub.isAdminAccount then
-        m_moduleOptions[#m_moduleOptions + 1] = {
-            id = "__nomodule__",
-            text = "No Module (Admin)",
-            descriptionDetails = "Admin only: create an empty game with no starting map and no game-system module. The game enters a blank map with zero modules installed.",
-            coverart = "panels/square.png",
-            startingModule = "",
-            noSystemModule = true,
-        }
-    end
+    -- Layout constants for the adventure covers.
+    local CARD_WIDTH = 236
+    local CARD_HEIGHT = 340
+    local CARD_MARGIN = 12
+    local CARD_BORDER = 3
+    -- Hover pan: how far the cover window drifts from centre (fraction of
+    -- the slack the image has beyond the box) and how fast (radians/sec).
+    local PAN_AMPLITUDE = 0.8
+    local PAN_SPEED = 0.7
+    local CARDS_PER_ROW = 5
 
-    local m_moduleid = m_moduleOptions[1].id
-    local GetModule = function()
-        for i, module in ipairs(m_moduleOptions) do
-            if module.id == m_moduleid then
-                return module
-            end
-        end
-        return nil
-    end
+    local GOLD = "#e8c46a"
+    local GOLD_DIM = "#a88a3c"
 
     local resultPanel
 
-    resultPanel = gui.Panel {
+    ---------------------------------------------------------------------------
+    -- Game modes. "Draw Steel" is the only mode most users have, in which case
+    -- the selector is not shown at all: they just pick adventures. Community
+    -- game types (Crows) appear when the user has opted in, and the admin-only
+    -- "No Module" mode for admin accounts.
+    ---------------------------------------------------------------------------
+    local m_modes = {
+        {
+            id = "drawsteel",
+            text = "Draw Steel",
+        },
+    }
+    if g_allowCommunityGameTypes:Get() then
+        for _, option in ipairs(g_communityModuleOptions) do
+            m_modes[#m_modes + 1] = {
+                id = option.id,
+                text = option.text,
+                module = option,
+            }
+        end
+    end
+    if dmhub.isAdminAccount then
+        m_modes[#m_modes + 1] = {
+            id = "__nomodule__",
+            text = "No Module (Admin)",
+            module = {
+                id = "__nomodule__",
+                text = "No Module (Admin)",
+                descriptionDetails = "Admin only: create an empty game with no starting map and no game-system module. The game enters a blank map with zero modules installed.",
+                coverart = "panels/square.png",
+                startingModule = "",
+                noSystemModule = true,
+            },
+        }
+    end
+
+    local m_modeid = m_modes[1].id
+    local function GetMode()
+        for _, mode in ipairs(m_modes) do
+            if mode.id == m_modeid then
+                return mode
+            end
+        end
+        return m_modes[1]
+    end
+
+    ---------------------------------------------------------------------------
+    -- Adventure cards. Built fresh on every refresh from the static option
+    -- list, the store, and the user's favorites, so a purchase made from the
+    -- store we send them to (or a module info download landing) re-renders
+    -- correctly.
+    ---------------------------------------------------------------------------
+
+    -- Selection state: adventure id -> true. Only owned adventures can be
+    -- selected; the default is The Delian Tomb.
+    local m_selected = {}
+    for _, option in ipairs(g_adventureOptions) do
+        if option.default then
+            m_selected[option.id] = true
+        end
+    end
+
+    -- The cards currently displayed, in display order.
+    local m_cards = {}
+
+    -- Module info downloads in flight for favorites not in the local cache.
+    local m_downloading = {}
+
+    local function ListContains(list, id)
+        for _, v in ipairs(list or {}) do
+            if v == id then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function ShopItemForModule(moduleid)
+        local codexShop = rawget(_G, "CodexShop")
+        if codexShop == nil then
+            return nil
+        end
+        return codexShop.ItemForModule(moduleid)
+    end
+
+    local function ShopItemVisible(item)
+        local codexShop = rawget(_G, "CodexShop")
+        if codexShop == nil or item == nil then
+            return false
+        end
+        return codexShop.ItemVisibleInShop(item)
+    end
+
+    -- The art a store adventure shows: the key art from its adventure page
+    -- (the wide painting behind the store page's title, rather than the book
+    -- cover), then the tile image, then nothing.
+    local function ShopItemCoverImage(item)
+        if item == nil then
+            return nil
+        end
+        local adventurePage = rawget(_G, "AdventurePage")
+        if adventurePage ~= nil then
+            local cfg = adventurePage.Read(item)
+            if type(cfg) == "table" and type(cfg.heroImage) == "string" and cfg.heroImage ~= "" then
+                return cfg.heroImage
+            end
+        end
+        local codexShop = rawget(_G, "CodexShop")
+        if codexShop == nil then
+            return nil
+        end
+        local image = codexShop.ItemImageForRole(item, "tileImage")
+        if image == nil or image == "" then
+            return nil
+        end
+        return image
+    end
+
+    -- Whether this account may install the module without buying it: a store
+    -- purchase, a Patreon grant, or the module record itself saying so.
+    local function ModuleOwned(moduleid, shopItem)
+        if shopItem ~= nil and shop:ItemInInventory(shopItem.id) then
+            return true
+        end
+        if ListContains(module.GetOurPurchasedModules(), moduleid) or ListContains(module.GetOurPatreonModules(), moduleid) then
+            return true
+        end
+        local info = module.GetModule(moduleid)
+        if info ~= nil and info.owned then
+            return true
+        end
+        return false
+    end
+
+    -- Resolves one adventure option into a card record, or nil if the user
+    -- can neither install it nor buy it.
+    --   id, text, description, cover, owned, shopItem, favorite
+    local function BuildCard(option, favorite)
+        local info = module.GetModule(option.id)
+        local shopItem = ShopItemForModule(option.id)
+
+        local card = {
+            id = option.id,
+            text = option.text or (info ~= nil and info.name) or option.id,
+            description = option.descriptionDetails,
+            cover = option.coverart,
+            coverWidth = option.coverWidth,
+            coverHeight = option.coverHeight,
+            shopItem = shopItem,
+            favorite = favorite,
+        }
+
+        if card.description == nil or card.description == "" then
+            if shopItem ~= nil and shopItem.details ~= nil and shopItem.details ~= "" then
+                card.description = shopItem.details
+            elseif info ~= nil then
+                card.description = info.details
+            end
+        end
+        if card.description == nil or card.description == "" then
+            card.description = card.text
+        end
+
+        if card.cover == nil then
+            card.cover = ShopItemCoverImage(shopItem)
+        end
+        if card.cover == nil and info ~= nil and info.coverart ~= nil and info.coverart ~= "" then
+            card.cover = info.coverart
+        end
+
+        if option.free then
+            card.owned = true
+        elseif favorite and info ~= nil and not info.premium then
+            -- A favorite that is not premium installs for anyone.
+            card.owned = true
+        else
+            card.owned = ModuleOwned(option.id, shopItem)
+        end
+
+        if not card.owned then
+            -- Not ours: only worth showing if the store will sell it.
+            if shopItem == nil or not ShopItemVisible(shopItem) then
+                return nil
+            end
+        end
+
+        return card
+    end
+
+    local function BuildCards()
+        local cards = {}
+        local seen = {}
+
+        for _, option in ipairs(g_adventureOptions) do
+            local card = BuildCard(option, false)
+            if card ~= nil then
+                cards[#cards + 1] = card
+                seen[card.id] = true
+            end
+        end
+
+        -- Favorites starred in the module browser. A favorite whose module
+        -- record is not cached locally is downloaded and the cards rebuilt
+        -- when it lands.
+        local favorites = rawget(_G, "ModuleFavorites")
+        if favorites ~= nil then
+            for _, moduleid in ipairs(favorites.List()) do
+                if not seen[moduleid] then
+                    if module.GetModule(moduleid) == nil then
+                        if not m_downloading[moduleid] then
+                            m_downloading[moduleid] = true
+                            module.DownloadModuleInfo{
+                                moduleid = moduleid,
+                                success = function(info)
+                                    if resultPanel ~= nil and resultPanel.valid then
+                                        resultPanel:FireEventTree("refreshAdventures")
+                                    end
+                                end,
+                                failure = function(err)
+                                    printf("CreateGameDialog: could not download favorite module %s: %s", moduleid, tostring(err))
+                                end,
+                            }
+                        end
+                    else
+                        local card = BuildCard({ id = moduleid }, true)
+                        if card ~= nil then
+                            cards[#cards + 1] = card
+                            seen[moduleid] = true
+                        end
+                    end
+                end
+            end
+        end
+
+        return cards
+    end
+
+    -- The window onto an image that fills a box without stretching: the
+    -- fraction of the image shown on each axis, and the rect for a given
+    -- position u/v in [0,1] along the axis that has slack (0.5 = centred).
+    local function CoverWindow(imageW, imageH, boxW, boxH)
+        local boxAspect = boxW / boxH
+        local imageAspect = imageW / imageH
+        local wFrac, hFrac
+        if imageAspect > boxAspect then
+            hFrac = 1
+            wFrac = boxAspect / imageAspect
+        else
+            wFrac = 1
+            hFrac = imageAspect / boxAspect
+        end
+        return wFrac, hFrac
+    end
+
+    local function CoverRect(wFrac, hFrac, u, v)
+        local left = (1 - wFrac) * u
+        local top = (1 - hFrac) * v
+        return { x1 = left, x2 = left + wFrac, y1 = 1 - top - hFrac, y2 = 1 - top }
+    end
+
+    -- Apply the centred window to a cover panel and remember the geometry
+    -- for the hover pan. The cover stays invisible until this runs, so an
+    -- image whose size is still unknown never shows stretched.
+    local function ApplyCoverFit(element, imageW, imageH, boxW, boxH)
+        local wFrac, hFrac = CoverWindow(imageW, imageH, boxW, boxH)
+        element.data.wFrac = wFrac
+        element.data.hFrac = hFrac
+        element.data.pos = 0.5
+        element.selfStyle.imageRect = CoverRect(wFrac, hFrac, 0.5, 0.5)
+        element:SetClass("fitted", true)
+    end
+
+    -- Cover-fit an image into the card's cover box, using the size given by
+    -- the card when known (built-in art) and otherwise asking the engine.
+    local function FitCover(element, card, boxW, boxH)
+        local imageid = card.cover
+        element.bgimage = imageid
+        if imageid == nil then
+            return
+        end
+        if card.coverWidth ~= nil and card.coverHeight ~= nil and card.coverWidth > 0 and card.coverHeight > 0 then
+            ApplyCoverFit(element, card.coverWidth, card.coverHeight, boxW, boxH)
+            return
+        end
+        local adventurePage = rawget(_G, "AdventurePage")
+        if adventurePage == nil then
+            -- No way to learn the size; show it as-is rather than nothing.
+            element:SetClass("fitted", true)
+            return
+        end
+        adventurePage.ImageDimensions(imageid, function(dims)
+            if not element.valid or element.bgimage ~= imageid then
+                return
+            end
+            if dims == nil or (dims.width or 0) <= 0 or (dims.height or 0) <= 0 then
+                element:SetClass("fitted", true)
+                return
+            end
+            ApplyCoverFit(element, dims.width, dims.height, boxW, boxH)
+        end)
+    end
+
+    -- One tick of the hover pan: while hovered the window drifts back and
+    -- forth along whichever axis the image has slack on; after the pointer
+    -- leaves it eases back to centre and the ticking stops.
+    local function PanCoverTick(element)
+        local data = element.data
+        if data.wFrac == nil then
+            element.thinkTime = nil
+            return
+        end
+        local target = 0.5
+        if data.hoverStart ~= nil then
+            local t = dmhub.Time() - data.hoverStart
+            target = 0.5 + 0.5 * PAN_AMPLITUDE * math.sin(t * PAN_SPEED)
+        end
+        local pos = data.pos or 0.5
+        pos = pos + (target - pos) * 0.08
+        data.pos = pos
+        if data.wFrac < 1 then
+            element.selfStyle.imageRect = CoverRect(data.wFrac, data.hFrac, pos, 0.5)
+        elseif data.hFrac < 1 then
+            element.selfStyle.imageRect = CoverRect(data.wFrac, data.hFrac, 0.5, pos)
+        else
+            element.thinkTime = nil
+            return
+        end
+        if data.hoverStart == nil and math.abs(pos - 0.5) < 0.002 then
+            data.pos = 0.5
+            element.selfStyle.imageRect = CoverRect(data.wFrac, data.hFrac, 0.5, 0.5)
+            element.thinkTime = nil
+        end
+    end
+
+    local function OpenStoreForItem(shopItem)
+        if shopItem == nil then
+            return
+        end
+        if CodexTitlescreenRoot ~= nil and CodexTitlescreenRoot.valid then
+            CodexTitlescreenRoot:AddChild(CreateShopScreen{ titlescreen = CodexTitlescreenRoot, inventory = false, itemid = shopItem.id })
+        end
+    end
+
+    local function PriceText(item)
+        if item == nil or item.price == nil or item.price <= 0 then
+            return "FREE"
+        end
+        return string.format("$%d.%02d", math.tointeger(math.floor(item.price / 100)), math.tointeger(item.price % 100))
+    end
+
+    local cardStyles = {
+        {
+            selectors = { "adventureCard" },
+            bgcolor = "#0c0c10",
+        },
+        {
+            selectors = { "adventureCover" },
+            bgcolor = "white",
+            saturation = 1,
+            opacity = 0,
+            transitionTime = 0.15,
+        },
+        {
+            selectors = { "adventureCover", "fitted" },
+            opacity = 1,
+        },
+        {
+            selectors = { "adventureCover", "parent:hover" },
+            brightness = 1.1,
+        },
+        {
+            selectors = { "adventureCover", "locked" },
+            saturation = 0.35,
+            brightness = 0.7,
+        },
+        {
+            selectors = { "adventureCover", "locked", "parent:hover" },
+            saturation = 0.7,
+            brightness = 0.9,
+        },
+        -- The border is a floating overlay drawn above the cover, so it is
+        -- never hidden behind the art.
+        {
+            selectors = { "adventureBorder" },
+            bgcolor = "clear",
+            borderWidth = CARD_BORDER,
+            borderColor = "#3a3a44",
+            transitionTime = 0.15,
+        },
+        {
+            selectors = { "adventureBorder", "parent:hover" },
+            borderColor = "#b0b0c0",
+        },
+        {
+            selectors = { "adventureBorder", "parent:selected" },
+            borderColor = GOLD,
+        },
+        {
+            selectors = { "adventureBorder", "parent:selected", "parent:hover" },
+            borderColor = "#fff0b0",
+        },
+        {
+            selectors = { "adventureTitleScrim" },
+            bgcolor = "#000000b4",
+        },
+        {
+            selectors = { "adventureTitle" },
+            color = "#f0f0f0",
+        },
+        {
+            selectors = { "adventureTitle", "selected" },
+            color = GOLD,
+        },
+        {
+            selectors = { "adventureBadge" },
+            opacity = 0,
+            transitionTime = 0.15,
+        },
+        {
+            selectors = { "adventureBadge", "selected" },
+            opacity = 1,
+        },
+        {
+            selectors = { "adventureStar" },
+            bgcolor = GOLD,
+        },
+        {
+            selectors = { "adventurePrice" },
+            bgcolor = "#000000cc",
+        },
+        {
+            selectors = { "adventurePrice", "parent:hover" },
+            bgcolor = GOLD_DIM,
+        },
+        {
+            selectors = { "modeButton" },
+            bgcolor = "#1a1a22",
+            borderWidth = 1,
+            borderColor = "#3a3a44",
+            transitionTime = 0.1,
+        },
+        {
+            selectors = { "modeButton", "hover" },
+            bgcolor = "#2a2a34",
+        },
+        {
+            selectors = { "modeButton", "selected" },
+            bgcolor = "#3a3220",
+            borderColor = GOLD,
+        },
+        {
+            selectors = { "modeLabel" },
+            color = "#cccccc",
+        },
+        {
+            selectors = { "modeLabel", "parent:selected" },
+            color = GOLD,
+            bold = true,
+        },
+    }
+
+    local function MakeAdventureCard(card)
+        local selected = card.owned and m_selected[card.id] == true
+
+        local coverPanel = gui.Panel{
+            classes = { "adventureCover", cond(not card.owned, "locked") },
+            width = "100%",
+            height = "100%",
+            bgimage = card.cover or "panels/square.png",
+            bgcolor = cond(card.cover ~= nil, "white", "#202028"),
+            interactable = false,
+            data = {
+                wFrac = nil,
+                hFrac = nil,
+                pos = 0.5,
+                hoverStart = nil,
+            },
+            create = function(element)
+                if card.cover ~= nil then
+                    FitCover(element, card, CARD_WIDTH, CARD_HEIGHT)
+                else
+                    element:SetClass("fitted", true)
+                end
+            end,
+            startPan = function(element)
+                element.data.hoverStart = dmhub.Time()
+                element.thinkTime = 0.03
+            end,
+            stopPan = function(element)
+                element.data.hoverStart = nil
+                element.thinkTime = 0.03
+            end,
+            think = PanCoverTick,
+        }
+
+        local titleLabel = gui.Label{
+            classes = { "adventureTitle", cond(selected, "selected") },
+            width = "100%",
+            height = "auto",
+            fontFace = "display",
+            fontSize = 24,
+            textAlignment = "center",
+            textWrap = true,
+            hpad = 10,
+            vpad = 10,
+            text = card.text,
+            interactable = false,
+        }
+
+        local checkBadge = gui.Panel{
+            classes = { "adventureBadge", cond(selected, "selected") },
+            floating = true,
+            halign = "right",
+            valign = "top",
+            width = 36,
+            height = 36,
+            hmargin = 10,
+            vmargin = 10,
+            bgimage = "ui-icons/module-checkmark.png",
+            bgcolor = GOLD,
+            interactable = false,
+        }
+
+        local cardArgs = {
+            classes = { "adventureCard", cond(selected, "selected") },
+            width = CARD_WIDTH,
+            height = CARD_HEIGHT,
+            hmargin = CARD_MARGIN,
+            vmargin = 8,
+            bgimage = "panels/square.png",
+            data = {
+                card = card,
+            },
+
+            coverPanel,
+
+            -- Title across the foot of the art, on a translucent scrim, in
+            -- the MCDM display face used on the book covers.
+            gui.Panel{
+                classes = { "adventureTitleScrim" },
+                floating = true,
+                halign = "center",
+                valign = "bottom",
+                width = "100%",
+                height = "auto",
+                bgimage = "panels/square.png",
+                interactable = false,
+
+                titleLabel,
+            },
+
+            -- Selected checkmark, top right.
+            checkBadge,
+        }
+
+        -- Favorite star, top left.
+        if card.favorite then
+            cardArgs[#cardArgs + 1] = gui.Panel{
+                classes = { "adventureStar" },
+                floating = true,
+                halign = "left",
+                valign = "top",
+                width = 28,
+                height = 28,
+                hmargin = 10,
+                vmargin = 10,
+                bgimage = "ui-icons/ph-star-fill.png",
+                interactable = false,
+            }
+        end
+
+        -- Price ribbon across the top of the art for adventures the user
+        -- still has to buy (a locked card is never selected, so it does not
+        -- collide with the checkmark).
+        if not card.owned then
+            cardArgs[#cardArgs + 1] = gui.Panel{
+                classes = { "adventurePrice" },
+                floating = true,
+                halign = "center",
+                valign = "top",
+                width = "100%",
+                height = 40,
+                flow = "horizontal",
+                bgimage = "panels/square.png",
+                interactable = false,
+
+                gui.Panel{
+                    width = 24,
+                    height = 24,
+                    halign = "center",
+                    valign = "center",
+                    hmargin = 6,
+                    bgimage = "icons/icon_shopping/shopping-cart.png",
+                    bgcolor = "white",
+                    interactable = false,
+                },
+                gui.Label{
+                    width = "auto",
+                    height = "auto",
+                    halign = "center",
+                    valign = "center",
+                    fontSize = 18,
+                    bold = true,
+                    color = "white",
+                    text = string.format("Buy - %s", PriceText(card.shopItem)),
+                    interactable = false,
+                },
+            }
+        end
+
+        -- Border overlay, last so it draws above everything.
+        cardArgs[#cardArgs + 1] = gui.Panel{
+            classes = { "adventureBorder" },
+            floating = true,
+            halign = "center",
+            valign = "center",
+            width = "100%",
+            height = "100%",
+            bgimage = "panels/square.png",
+            interactable = false,
+        }
+
+        cardArgs.hover = function(element)
+            audio.FireSoundEvent("Mouse.Hover")
+            coverPanel:FireEvent("startPan")
+            element:FireEvent("showDescription")
+        end
+
+        cardArgs.dehover = function(element)
+            coverPanel:FireEvent("stopPan")
+        end
+
+        -- Selection restyles in place; the pan and tooltip carry on.
+        cardArgs.refreshSelection = function(element)
+            local isSelected = card.owned and m_selected[card.id] == true
+            element:SetClass("selected", isSelected)
+            titleLabel:SetClass("selected", isSelected)
+            checkBadge:SetClass("selected", isSelected)
+        end
+
+        cardArgs.showDescription = function(element)
+            if element.tooltip ~= nil then
+                return
+            end
+            local text = card.description
+            if not card.owned then
+                text = string.format("%s\n\n<i>Available in the store for %s. Select it to open the store.</i>", text, PriceText(card.shopItem))
+            elseif card.favorite then
+                text = string.format("%s\n\n<i>One of your favorite modules.</i>", text)
+            end
+            gui.Tooltip{
+                text = text,
+                maxWidth = 460,
+                fontSize = 16,
+                halign = "center",
+                valign = "top",
+            }(element)
+        end
+
+        cardArgs.press = function(element)
+            audio.FireSoundEvent("Mouse.Click")
+            if not card.owned then
+                OpenStoreForItem(card.shopItem)
+                return
+            end
+            m_selected[card.id] = not m_selected[card.id]
+            resultPanel:FireEventTree("refreshSelection")
+        end
+
+        return gui.Panel(cardArgs)
+    end
+
+    ---------------------------------------------------------------------------
+    -- What gets created.
+    ---------------------------------------------------------------------------
+
+    -- The module description handed to CreateGameLoadingScreen for the
+    -- current selection.
+    local function BuildCreateInfo()
+        local mode = GetMode()
+        if mode.module ~= nil then
+            local result = {}
+            for k, v in pairs(mode.module) do
+                result[k] = v
+            end
+            return result
+        end
+
+        local chosen = {}
+        for _, card in ipairs(m_cards) do
+            if card.owned and m_selected[card.id] then
+                chosen[#chosen + 1] = card
+            end
+        end
+
+        local result
+        local primary = chosen[1]
+        if primary == nil then
+            result = {}
+            for k, v in pairs(g_customCampaignOption) do
+                result[k] = v
+            end
+        else
+            result = {
+                id = primary.id,
+                text = primary.text,
+                descriptionDetails = primary.description,
+                coverart = primary.cover or g_customCampaignOption.coverart,
+            }
+            local extras = {}
+            for i = 2, #chosen do
+                extras[#extras + 1] = chosen[i].id
+            end
+            result.additionalModules = extras
+        end
+        return result
+    end
+
+    local function CountSelected()
+        local n = 0
+        for _, card in ipairs(m_cards) do
+            if card.owned and m_selected[card.id] then
+                n = n + 1
+            end
+        end
+        return n
+    end
+
+    ---------------------------------------------------------------------------
+    -- Layout.
+    ---------------------------------------------------------------------------
+
+    local modeButtons = {}
+    for _, mode in ipairs(m_modes) do
+        modeButtons[#modeButtons + 1] = gui.Panel{
+            classes = { "modeButton" },
+            width = 220,
+            height = 44,
+            hmargin = 4,
+            bgimage = "panels/square.png",
+            data = { modeid = mode.id },
+
+            gui.Label{
+                classes = { "modeLabel" },
+                width = "100%",
+                height = "100%",
+                fontSize = 20,
+                textAlignment = "center",
+                text = mode.text,
+                interactable = false,
+            },
+
+            refreshMode = function(button)
+                button:SetClass("selected", m_modeid == mode.id)
+            end,
+
+            hover = function(button)
+                audio.FireSoundEvent("Mouse.Hover")
+            end,
+
+            press = function(button)
+                audio.FireSoundEvent("Mouse.Click")
+                m_modeid = mode.id
+                resultPanel:FireEventTree("refreshMode")
+            end,
+        }
+    end
+
+    local modeButtonRow = gui.Panel{
+        width = "auto",
+        height = "auto",
+        halign = "center",
+        flow = "horizontal",
+        children = modeButtons,
+    }
+
+    local modeSelector = gui.Panel{
+        classes = { cond(#m_modes <= 1, "collapsed") },
+        width = "auto",
+        height = "auto",
+        halign = "center",
+        flow = "vertical",
+        vmargin = 6,
+
+        gui.Label{
+            text = "Game Mode",
+            width = "auto",
+            height = "auto",
+            halign = "center",
+            fontSize = 16,
+            color = "#aaaaaa",
+            bmargin = 6,
+        },
+
+        modeButtonRow,
+    }
+
+    -- The adventure picker (Draw Steel mode).
+    local adventureRow = gui.Panel{
+        width = "auto",
+        height = "auto",
+        halign = "center",
+        flow = "vertical",
+        refreshAdventures = function(element)
+            m_cards = BuildCards()
+            local rows = {}
+            local row = nil
+            for i, card in ipairs(m_cards) do
+                if row == nil or #row >= CARDS_PER_ROW then
+                    row = {}
+                    rows[#rows + 1] = row
+                end
+                row[#row + 1] = MakeAdventureCard(card)
+            end
+            local children = {}
+            for _, cards in ipairs(rows) do
+                children[#children + 1] = gui.Panel{
+                    width = "auto",
+                    height = "auto",
+                    halign = "center",
+                    flow = "horizontal",
+                    children = cards,
+                }
+            end
+            element.children = children
+        end,
+    }
+
+    local adventureSummary = gui.Label{
+        width = "90%",
+        height = "auto",
+        halign = "center",
+        fontSize = 16,
+        textAlignment = "center",
+        color = "#bbbbbb",
+        vmargin = 6,
+        refreshSelection = function(element)
+            element:FireEvent("refreshAdventures")
+        end,
+        refreshAdventures = function(element)
+            local n = CountSelected()
+            if n == 0 then
+                element.text = "No adventure selected: your campaign begins in a tavern with the full Draw Steel rules, ready for a story of your own."
+            else
+                local names = {}
+                for _, card in ipairs(m_cards) do
+                    if card.owned and m_selected[card.id] then
+                        names[#names + 1] = card.text
+                    end
+                end
+                element.text = string.format("Installing: %s. The Draw Steel core rules are always included. Select more than one adventure to install them all.", table.concat(names, ", "))
+            end
+        end,
+    }
+
+    local adventurePanel = gui.Panel{
+        width = "100%",
+        height = "auto",
+        flow = "vertical",
+        halign = "center",
+
+        gui.Label{
+            text = "Choose Your Adventures",
+            width = "auto",
+            height = "auto",
+            halign = "center",
+            fontSize = 22,
+            bold = true,
+            tmargin = 6,
+        },
+        gui.Label{
+            text = "Select every adventure to install in this campaign. Adventures you do not own yet can be bought from the store.",
+            width = "90%",
+            height = "auto",
+            halign = "center",
+            fontSize = 15,
+            color = "#aaaaaa",
+            textAlignment = "center",
+            bmargin = 4,
+        },
+
+        adventureRow,
+        adventureSummary,
+
+        refreshMode = function(element)
+            element:SetClass("collapsed", GetMode().module ~= nil)
+        end,
+    }
+
+    -- Single-module modes (Crows, No Module): one cover with its description.
+    local modePanel = gui.Panel{
+        width = "100%",
+        height = "auto",
+        flow = "vertical",
+        halign = "center",
+
+        gui.Label{
+            width = "auto",
+            height = "auto",
+            halign = "center",
+            fontSize = 26,
+            bold = true,
+            tmargin = 10,
+            refreshMode = function(element)
+                local mode = GetMode()
+                if mode.module ~= nil then
+                    element.text = mode.module.text
+                end
+            end,
+        },
+
+        gui.Panel{
+            width = 640,
+            height = 360,
+            halign = "center",
+            vmargin = 8,
+            bgcolor = "white",
+            refreshMode = function(element)
+                local mode = GetMode()
+                if mode.module ~= nil then
+                    element.bgimage = mode.module.coverart
+                end
+            end,
+        },
+
+        gui.Label{
+            width = "80%",
+            height = "auto",
+            halign = "center",
+            fontSize = 16,
+            textAlignment = "center",
+            refreshMode = function(element)
+                local mode = GetMode()
+                if mode.module ~= nil then
+                    element.text = mode.module.descriptionDetails
+                end
+            end,
+        },
+
+        refreshMode = function(element)
+            element:SetClass("collapsed", GetMode().module == nil)
+        end,
+    }
+
+    resultPanel = gui.Panel{
         width = "100%",
         height = "100%",
         bgimage = true,
         bgcolor = "clear",
         floating = true,
-        gui.Panel {
-            styles = ThemeEngine.GetStyles(),
+        data = {
+            backend = nil,
+        },
+
+        create = function(element)
+            -- A purchase made from the store we send the user to lands as an
+            -- inventory refresh; re-read ownership so the bought adventure
+            -- becomes selectable without reopening this dialog.
+            shop.events:Listen(element)
+        end,
+
+        refreshInventory = function(element)
+            element:FireEventTree("refreshAdventures")
+        end,
+
+        gui.Panel{
+            styles = ThemeEngine.MergeStyles(cardStyles),
             classes = { "framedPanel" },
-            width = 800,
-            height = 900,
+            width = 1400,
+            height = 880,
             halign = "center",
             valign = "center",
             flow = "vertical",
@@ -4272,12 +5238,12 @@ function CreateGameDialog()
             create = function(element)
                 ThemeEngine.OnThemeChanged(mod, function()
                     if element.valid then
-                        element.styles = ThemeEngine.GetStyles()
+                        element.styles = ThemeEngine.MergeStyles(cardStyles)
                     end
                 end)
             end,
 
-            gui.Label {
+            gui.Label{
                 classes = { "dialogTitle" },
                 text = "Create New Campaign",
                 halign = "center",
@@ -4293,60 +5259,20 @@ function CreateGameDialog()
                 bmargin = 8,
             },
 
-            gui.Label {
-                text = "Choose Module:",
-                width = "80%",
-                height = "auto",
-                fontSize = 20,
-                textAlignment = "left",
-                halign = "center",
-            },
+            modeSelector,
 
-            gui.Dropdown {
-                width = "80%",
-                height = 32,
+            -- Body: whichever of the two panels the mode wants. The reserved
+            -- height leaves room for the title, divider, mode selector, the
+            -- dev backend row and the Create button around it.
+            gui.Panel{
+                width = "100%",
+                height = "100%-270",
+                flow = "vertical",
                 halign = "center",
-                fontSize = 20,
-                options = m_moduleOptions,
-                idChosen = m_moduleid,
-                change = function(element)
-                    ---@cast element Dropdown
-                    m_moduleid = element.idChosen
-                    resultPanel:FireEventTree("refreshModule")
-                end,
-            },
+                vscroll = true,
 
-            gui.Label {
-                fontSize = 28,
-                width = "80%",
-                height = 36,
-                halign = "center",
-                bold = true,
-                tmargin = 8,
-                refreshModule = function(element)
-                    element.text = GetModule().text
-                end,
-            },
-
-            gui.Panel {
-                width = "80%",
-                height = "56.25% width", --16:9 aspect ratio
-                bgcolor = "white",
-                halign = "center",
-                vmargin = 4,
-                refreshModule = function(element)
-                    element.bgimage = GetModule().coverart
-                end,
-            },
-
-            gui.Label {
-                width = "80%",
-                height = "auto",
-                halign = "center",
-                fontSize = 16,
-                refreshModule = function(element)
-                    element.text = GetModule().descriptionDetails
-                end,
+                adventurePanel,
+                modePanel,
             },
 
             gui.Panel {
@@ -4387,15 +5313,15 @@ function CreateGameDialog()
             gui.Button {
                 halign = "center",
                 valign = "bottom",
-                width = 240,
-                height = 40,
+                width = 260,
+                height = 44,
                 fontSize = 24,
                 vmargin = 8,
                 bold = true,
                 text = "Create Campaign",
                 click = function(element)
                     local backend = resultPanel.data and resultPanel.data.backend or "local"
-                    local loadingScreen = CreateGameLoadingScreen(GetModule(), backend)
+                    local loadingScreen = CreateGameLoadingScreen(BuildCreateInfo(), backend)
                     element.root:AddChild(loadingScreen)
                     resultPanel:DestroySelf()
                 end,
@@ -4413,7 +5339,8 @@ function CreateGameDialog()
         }
     }
 
-    resultPanel:FireEventTree("refreshModule")
+    resultPanel:FireEventTree("refreshMode")
+    resultPanel:FireEventTree("refreshAdventures")
     return resultPanel
 end
 

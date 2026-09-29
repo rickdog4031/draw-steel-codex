@@ -48,6 +48,13 @@ for _,section in ipairs(g_librarySections) do
     end
 end
 
+--PDFs the user may save a copy of to their own disk: their book cards get a
+--download button. Keyed by PDF document id.
+local g_downloadableDocIds = {
+    ["8856e864-ab59-4ae0-9966-b0e1b86bf394"] = true, --The Red Road
+    ["429d295e-5306-441a-b763-dc09358f2ded"] = true, --The Dark Heart of the Wood
+}
+
 --Book cover size, in the screen's 1920-wide logical units (US letter aspect).
 local COVER_WIDTH = 256
 local COVER_HEIGHT = math.floor(COVER_WIDTH * 11 / 8.5)
@@ -263,6 +270,40 @@ local function CreateBookCard(doc)
                 end
             end,
         },
+
+        --only books in g_downloadableDocIds can be saved to disk. "saving"
+        --dims it while the file downloads and copies. Pinned a fixed distance
+        --below the cover (level with a one-line title's page count) rather than
+        --to the card bottom, so it lines up across cards whose titles wrap.
+        gui.Panel {
+            classes = { "libraryDownload", cond(g_downloadableDocIds[doc.id], nil, "collapsed") },
+            bgimage = "phosphor/download-simple.png",
+            floating = true,
+            halign = "left",
+            valign = "top",
+            tmargin = COVER_HEIGHT + 37,
+
+            linger = function(element)
+                gui.Tooltip("Save a copy to your computer")(element)
+            end,
+            hover = function(element)
+                audio.FireSoundEvent("Mouse.Hover")
+            end,
+            click = function(element)
+                if element:HasClass("saving") then
+                    return
+                end
+                audio.FireSoundEvent("Mouse.Click")
+                element:SetClass("saving", true)
+                doc:SaveToDisk{
+                    callback = function(path)
+                        if element.valid then
+                            element:SetClass("saving", false)
+                        end
+                    end,
+                }
+            end,
+        },
     }
 end
 
@@ -420,6 +461,26 @@ local g_libraryStyles = {
         fontSize = 14,
         color = "#9c9281",
         textAlignment = "center",
+    },
+    {
+        selectors = { "libraryDownload" },
+        width = 22,
+        height = 22,
+        bgcolor = "#b9ae99",
+    },
+    {
+        selectors = { "libraryDownload", "hover" },
+        bgcolor = ACCENT,
+        scale = 1.1,
+        transitionTime = 0.12,
+    },
+    {
+        selectors = { "libraryDownload", "press" },
+        brightness = 0.85,
+    },
+    {
+        selectors = { "libraryDownload", "saving" },
+        opacity = 0.4,
     },
 }
 

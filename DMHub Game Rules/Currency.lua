@@ -1,9 +1,11 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Currency: GameType
+--- @field new fun(o?: table): Currency
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of this currency denomination.
 --- @field details string Description/lore text.
---- @field tableName string Name of the data table ("currency").
+--- @field tableName "currency" Name of the data table ("currency").
 --- @field money boolean If true, this denomination is a monetary currency (not a generic resource).
 --- @field autoconvert boolean If true, the system can automatically make change using this denomination.
 --- @field value number Exchange value relative to the monetary standard for this denomination's standard.

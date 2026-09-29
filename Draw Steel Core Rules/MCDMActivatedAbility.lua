@@ -790,12 +790,20 @@ RegisterGoblinScriptSymbol(ActivatedAbility, {
 
 })
 
+--An ability invoked with suppressInvokedActionCost has its own cost cleared, but it is
+--still made as part of the invoker's action (e.g. Panther's Devastating Rush), so answer
+--with the invoker's action type. Critical Hit depends on this.
+local function IsMainActionAbility(c)
+    local actionid = c:try_get("invokerActionResourceId") or c:ActionResource()
+    return actionid == "d19658a2-4d7b-4504-af9e-1a5410fb17fd" --id of action
+end
+
 RegisterGoblinScriptSymbol(ActivatedAbility, {
     name = "action",
     type = "boolean",
     desc = "Is this ability an action?",
     calculate = function(c)
-        return c:ActionResource() == "d19658a2-4d7b-4504-af9e-1a5410fb17fd" --id of action
+        return IsMainActionAbility(c)
     end,
 
 })
@@ -806,7 +814,7 @@ RegisterGoblinScriptSymbol(ActivatedAbility, {
     desc = "Returns true if this ability is a main action.",
     seealso = { "action" },
     calculate = function(c)
-        return c:ActionResource() == "d19658a2-4d7b-4504-af9e-1a5410fb17fd" --id of action
+        return IsMainActionAbility(c)
     end,
 
 })

@@ -1,8 +1,10 @@
 local mod = dmhub.GetModLoading()
 
 --- @class EncounterRuleSet: GameType
+--- @field new fun(o?: table): EncounterRuleSet
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of the encounter (e.g. "Volcano").
---- @field tableName string Data table of encounter rule sets ("encounterRuleSets").
+--- @field tableName "encounterRuleSets" Data table of encounter rule sets ("encounterRuleSets").
 --- @field rulesTableName string Data table holding the rules themselves ("encounterRuleMods").
 --- A named set of encounter rules. Each set is one entry in the "encounterRuleSets" table. The
 --- rules belonging to a set are GlobalRuleMod objects stored in the flat "encounterRuleMods"

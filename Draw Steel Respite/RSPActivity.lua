@@ -10,6 +10,7 @@ local mod = dmhub.GetModLoading()
 --- The registry is module state, not document state: it describes what this
 --- client can do, and the Respite records only which of them are on offer.
 --- @class RSPActivity: GameType
+--- @field new fun(o?: table): RSPActivity
 --- @field key string
 --- @field name string
 --- @field paint fun(): Panel the Director's setup fields

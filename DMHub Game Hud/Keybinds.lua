@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Keybinds: GameType
+--- @field new fun(o?: table): Keybinds
 Keybinds = RegisterGameType("Keybinds")
 
 Keybinds.sections = {}

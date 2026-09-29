@@ -143,6 +143,8 @@ local LibraryStyles = {
 }
 
 --- @class CompendiumPermission: GameType
+--- @field new fun(o?: table): CompendiumPermission
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 CompendiumPermission = RegisterGameType("CompendiumPermission")
 
 function CompendiumPermission.TranslateKey(key)
@@ -2879,7 +2881,7 @@ local ShowFeatsPanel = function(parentPanel, tableName)
 		vscroll = true,
 		monitorAssets = true,
 		refreshAssets = function(element)
-			local featsTable = dmhub.GetTable(tableName) or {}
+			local featsTable = dmhub.GetTable(tableName) or {} --[[@as table<string, table>]]
 
 			local listPanels = {}
 
@@ -7382,6 +7384,8 @@ end
 --term, its definition, and a SourceReference to the book and page that
 --defines it (openable directly in the PDF viewer, like ability sources).
 --- @class GlossaryTerm: GameType
+--- @field new fun(o?: table): GlossaryTerm
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 GlossaryTerm = RegisterGameType("GlossaryTerm")
 GlossaryTerm.tableName = "glossaryTerms"
 GlossaryTerm.name = "New Term"

@@ -14,6 +14,7 @@ end
 
 
 --- @class ActivatedAbilityTemporaryStaminaChatMessage: GameType
+--- @field new fun(o?: table): ActivatedAbilityTemporaryStaminaChatMessage
 --- @field ability ActivatedAbility
 ActivatedAbilityTemporaryStaminaChatMessage = RegisterGameType("ActivatedAbilityTemporaryStaminaChatMessage")
 ActivatedAbilityTemporaryStaminaChatMessage.amount = 0
@@ -105,6 +106,7 @@ end
 
 
 --- @class ActivatedAbilityGrantTemporaryStaminaBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityGrantTemporaryStaminaBehavior
 --- @field amount nil|string GoblinScript expression for the temporary stamina amount to grant.
 --- Behavior that grants temporary stamina (temporary hit points) to the target.
 ActivatedAbilityGrantTemporaryStaminaBehavior = RegisterGameType("ActivatedAbilityGrantTemporaryStaminaBehavior", "ActivatedAbilityBehavior")

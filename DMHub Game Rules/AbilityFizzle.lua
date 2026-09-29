@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityFizzleBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityFizzleBehavior
 --- @field summary string Short label shown in behavior lists.
 ActivatedAbilityFizzleBehavior = RegisterGameType("ActivatedAbilityFizzleBehavior", "ActivatedAbilityBehavior")
 

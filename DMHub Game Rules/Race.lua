@@ -1,8 +1,10 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Race: GameType
+--- @field new fun(o?: table): Race
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name (e.g. "Elf", "Human").
---- @field tableName string Data table name ("races").
+--- @field tableName "races" Data table name ("races").
 --- @field height number Default height in feet.
 --- @field weight string Weight description string.
 --- @field lifeSpan string Life span description string.

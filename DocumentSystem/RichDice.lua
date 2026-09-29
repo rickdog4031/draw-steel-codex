@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 ---@class RichDice: RichTag
+--- @field new fun(o?: table): RichDice
 RichDice = RegisterGameType("RichDice", "RichTag")
 RichDice.tag = "dice"
 

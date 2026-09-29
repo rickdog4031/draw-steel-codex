@@ -94,12 +94,14 @@ local g_DialogStyles = {
 --A RestRequestToken instance has the following fields:
 -- complete = bool
 --- @class RestRequestToken: GameType
+--- @field new fun(o?: table): RestRequestToken
 RestRequestToken = RegisterGameType("RestRequestToken")
 
 --A RestRequest instance has the following fields:
 -- type = "short" / "long"
 -- tokens = string -> RequestRequestToken table.
 --- @class RestRequest: GameType
+--- @field new fun(o?: table): RestRequest
 RestRequest = RegisterGameType("RestRequest")
 
 if false then

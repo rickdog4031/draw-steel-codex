@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 --- compendium and which can later seed a downtime project. Field names mirror
 --- DTProject / equipment items so values map straight across.
 --- @class DowntimeActivity: GameType
+--- @field new fun(o?: table): DowntimeActivity
 --- @field id string GUID identifier (engine-managed for table items)
 --- @field name string Display name (also the compendium list label)
 --- @field itemPrerequisite string Short text describing any prerequisite
@@ -12,7 +13,7 @@ local mod = dmhub.GetModLoading()
 --- @field testCharacteristics string[] DTConstants.CHARACTERISTICS keys usable for the roll
 --- @field projectGoal string Short text goal (number first, optional detail in parentheses)
 --- @field eventTableId string GUID of the adventure table rolled for this activity's events ("" for none)
---- @field tableName string Data table name ("downtimeActivities")
+--- @field tableName "downtimeActivities" Data table name ("downtimeActivities")
 DowntimeActivity = RegisterGameType("DowntimeActivity")
 
 DowntimeActivity.tableName = "downtimeActivities"

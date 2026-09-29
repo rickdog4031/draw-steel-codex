@@ -1,5 +1,6 @@
 --- Downtime Roller information - abstraction of an entity that can roll on a project
 --- @class DTRoller: GameType
+--- @field new fun(o?: table): DTRoller
 --- @field name string The name of the roller
 --- @field characteristics table The list of characteristics for the roller as attrId = value
 --- @field languages table Flag list of language id's known

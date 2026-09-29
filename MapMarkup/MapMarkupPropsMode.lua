@@ -635,6 +635,7 @@ function MM.BuildPropsMode()
                 if element.data.propid ~= m.props.selected then
                     MM.AbortPendingTeleporterPair()
                 end
+                m.stairs.active = false
                 m.props.selected = element.data.propid
                 m.props.editingId = nil
                 m.props.editingIds = nil
@@ -716,8 +717,9 @@ function MM.BuildPropsMode()
                     element.data.signature = sig
 
                     --heal a dead selection (asset untagged or deleted) to
-                    --the first chip.
-                    local found = false
+                    --the first chip. No prop type is selected while the
+                    --Stairs chip is, which is not a dead selection.
+                    local found = MM.StairsActive()
                     for _,node in ipairs(nodes) do
                         if node.id == m.props.selected then
                             found = true
@@ -748,11 +750,15 @@ function MM.BuildPropsMode()
                             textAlignment = "center",
                         }
                     end
+                    --the built-in Stairs chip always comes last (MapMarkupStairs.lua).
+                    chips[#chips+1] = MM.CreateStairsChip(RefreshPropUI)
                     element.children = chips
                 else
                     for _,chip in ipairs(element.children) do
                         if chip.data ~= nil and chip.data.propid ~= nil then
                             chip:SetClass("selected", chip.data.propid == m.props.selected)
+                        elseif chip.data ~= nil and chip.data.stairsChip then
+                            chip:SetClass("selected", MM.StairsActive())
                         end
                     end
                 end
@@ -2293,6 +2299,7 @@ function MM.BuildPropsMode()
             },
 
             propPalettePanel,
+            MM.BuildStairsSection(RefreshPropUI),
             propStatusLabel,
             propPropertiesPanel,
             propTextPanel,

@@ -439,6 +439,7 @@ CharacterModifier.TypeInfo.granttreasure = {
     button injected under the target slot hands the item over and locks it.
 ]]
 --- @class CharacterTreasureGrantChoice: CharacterChoice
+--- @field new fun(o?: table): CharacterTreasureGrantChoice
 CharacterTreasureGrantChoice = RegisterGameType("CharacterTreasureGrantChoice", "CharacterChoice")
 
 CharacterTreasureGrantChoice.description = "Treasure Choice"
@@ -637,6 +638,7 @@ end
     to do, so triggers can fire them freely.
 ]]
 --- @class ActivatedAbilityManifestTreasureBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityManifestTreasureBehavior
 --- @field treasureId string Matches the Grant Treasure modifier's treasureId.
 --- @field mode string "manifest" or "vanish".
 ActivatedAbilityManifestTreasureBehavior = RegisterGameType("ActivatedAbilityManifestTreasureBehavior", "ActivatedAbilityBehavior")

@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityRollBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityRollBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field consequenceText string Text shown alongside the roll result.
 --- @field roll string|number|table Dice expression to roll (e.g. "2d6+3"). GoblinScript formula.

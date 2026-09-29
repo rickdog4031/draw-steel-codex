@@ -1,6 +1,7 @@
 --- A fish species: the named, sized creature a scoring cast produces
 --- Lives in the Director-editable FishSpecies compendium table.
 --- @class FishSpecies: GameType
+--- @field new fun(o?: table): FishSpecies
 --- @field id string GUID identifier (engine-managed for table items)
 --- @field name string Display name
 --- @field waterType string An FSHConstants.WATER_TYPE key
@@ -8,7 +9,7 @@
 --- @field icon string Icon path
 --- @field color string Hex tint applied to the icon
 --- @field flavor string Optional one-line description
---- @field tableName string Data table name ("FishSpecies")
+--- @field tableName "FishSpecies" Data table name ("FishSpecies")
 FishSpecies = RegisterGameType("FishSpecies")
 
 FishSpecies.tableName = "FishSpecies"

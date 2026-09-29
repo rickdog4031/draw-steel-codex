@@ -1,8 +1,10 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Kit: GameType
+--- @field new fun(o?: table): Kit
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of the kit.
---- @field tableName string Data table name ("kits").
+--- @field tableName "kits" Data table name ("kits").
 --- @field type string Kit type id (e.g. "martial", "caster", "stormwight").
 --- @field description string Descriptive text.
 --- @field equipmentDescription string Description of the kit's equipment.

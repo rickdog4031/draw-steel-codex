@@ -2,10 +2,11 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class equipment
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field isWeapon boolean
 --- @field isArmor boolean
 --- @field isShield boolean
---- @field tableName string Name of the data table for all gear ("tbl_Gear").
+--- @field tableName "tbl_Gear" Name of the data table for all gear ("tbl_Gear").
 --- @field unique boolean If true, only one copy can exist in an inventory.
 --- @field flavor string Flavor/lore text.
 --- @field weight number Item weight.
@@ -29,13 +30,17 @@ local mod = dmhub.GetModLoading()
 
 --Types defined as core types by DMHub.
 --- @class equipment: GameType
+--- @field new fun(o?: table): equipment
 equipment = RegisterGameType("equipment")
 
 --- @class weapon: equipment
+--- @field new fun(o?: table): weapon
 weapon = RegisterGameType("weapon", "equipment")
 --- @class armor: equipment
+--- @field new fun(o?: table): armor
 armor = RegisterGameType("armor", "equipment")
 --- @class shield: equipment
+--- @field new fun(o?: table): shield
 shield = RegisterGameType("shield", "equipment")
 
 equipment.tableName = "tbl_Gear"

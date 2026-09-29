@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class CompendiumReference: GameType
+--- @field new fun(o?: table): CompendiumReference
 CompendiumReference = RegisterGameType("CompendiumReference")
 
 CompendiumReference.targetTable = ""

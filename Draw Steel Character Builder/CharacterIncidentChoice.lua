@@ -5,8 +5,10 @@
     a feature choice for purposes of the character builder.
 ]]
 --- @class CharacterIncidentChoice: CharacterChoice
+--- @field new fun(o?: table): CharacterIncidentChoice
 CharacterIncidentChoice = RegisterGameType("CharacterIncidentChoice", "CharacterChoice")
 --- @class CharacterIncidentOption: GameType
+--- @field new fun(o?: table): CharacterIncidentOption
 CharacterIncidentOption = RegisterGameType("CharacterIncidentOption")
 
 CharacterIncidentChoice.name = "Incident"

@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
     Title Detail
 ]]
 --- @class CBTitleDetail: GameType
+--- @field new fun(o?: table): CBTitleDetail
 CBTitleDetail = RegisterGameType("CBTitleDetail")
 
 local SEL = CharacterBuilder.SELECTOR

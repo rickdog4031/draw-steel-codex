@@ -1,10 +1,11 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Background: GameType
+--- @field new fun(o?: table): Background
 --- @field name string Display name of the career/background.
 --- @field description string Descriptive text.
 --- @field portraitid string Asset id for the career portrait.
---- @field tableName string Data table name ("careers").
+--- @field tableName "backgrounds"|"careers" Data table name ("careers").
 Background = RegisterGameType("Background")
 
 Background.tableName = "careers"
@@ -94,7 +95,7 @@ end
 
 local SetBackground = function(tableName, backgroundPanel, backgroundid)
 	local backgroundTable = dmhub.GetTable(tableName) or {}
-	local background = backgroundTable[backgroundid]
+	local background = backgroundTable[backgroundid] --[[@as Background]]
 	local UploadBackground = function()
 		dmhub.SetAndUploadTableItem(tableName, background)
 	end

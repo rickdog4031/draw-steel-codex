@@ -1,16 +1,20 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Deity: GameType
+--- @field new fun(o?: table): Deity
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name.
 --- @field description string Lore/description text.
---- @field tableName string Data table name ("Deities").
+--- @field tableName "Deities" Data table name ("Deities").
 --- @field group string UI group label for organizing deities.
 --- @field domainList table[] List of domain references {id, text} associated with this deity.
 Deity = RegisterGameType("Deity")
 
 --- @class DeityDomain: GameType
+--- @field new fun(o?: table): DeityDomain
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name.
---- @field tableName string Data table name ("DeityDomains").
+--- @field tableName "DeityDomains" Data table name ("DeityDomains").
 DeityDomain = RegisterGameType("DeityDomain")
 
 Deity.name = "New Deity"
@@ -268,6 +272,7 @@ function Deity.DeleteDomainById(self, id)
 end
 
 --- @class CharacterDeityChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterDeityChoice
 --- @field name string Display name ("Deity").
 --- @field description string Prompt shown to the player.
 --- @field domainList table[] Filtered domain list; empty means all domains are available.
@@ -486,6 +491,7 @@ CharacterChoice.RegisterChoice{
 }
 
 --- @class CharacterDomainChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterDomainChoice
 --- @field name string Display name ("Domain").
 --- @field numChoices number|string|table Number of domains the player may choose.
 --- @field description string Prompt shown to the player.

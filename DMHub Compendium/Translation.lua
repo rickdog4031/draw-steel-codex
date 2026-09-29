@@ -326,6 +326,7 @@ end
 local customStringsTable = "langstring"
 
 --- @class langstring: GameType
+--- @field new fun(o?: table): langstring
 langstring = RegisterGameType("langstring")
 
 langstring.name = "Translation"

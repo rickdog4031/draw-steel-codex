@@ -40,6 +40,7 @@
 --- @field roofVisionExclusionFade number
 --- @field roofVisionExclusionFadeNoUpload any
 --- @field footprintCount number The number of footprints currently on this floor (on this client).
+--- @field bloodSpatterCount number The number of blood spatters currently on this floor (on this client).
 --- @field charactersOnFloor any
 --- @field playerCharactersOnFloor any
 --- @field playerCharactersOnLayer any
@@ -98,6 +99,14 @@ function MapFloorLua:AddFootprint(options) end
 
 --- Removes every footprint on this floor immediately, on this client only.
 function MapFloorLua:ClearFootprints() end
+
+--- Throws a spatter of blood onto this floor. It leaves (fromx, fromy) as a droplet, flies for 'flight' seconds (default 0.3; 0 = it just appears) to land at (x, y), splats out into its image and then fades away over 'lifetime' seconds (default 60). Positions are in token position space; fromx/fromy default to x/y. image is an image asset id or a built-in image path such as 'blood/splatter-1.png' (required). angle rotates the image in degrees counterclockwise (default 0); size is its longer side in tiles (default 1); mirror flips it; color multiplies it (default white: the image's own colors). recolor repaints the image in that color while keeping its light and dark shading, e.g. green ichor from the red blood art (default: the image's own colors). delay holds the throw back that many seconds (default 0). remain is the opacity the spatter keeps once its lifetime is up (default 0: it fades away and is removed; above 0 it fades down to that and stays until cleared). tag names a group the spatter belongs to, so ClearBloodSpatter(tag) can remove the group together (default: none). Client-local: not saved or synced, so every client throws its own blood from the same synced event, seeded the same way. Does nothing if the floor is not currently shown.
+--- @param options {x: number, y: number, image: string, fromx: number|nil, fromy: number|nil, angle: number|nil, size: number|nil, mirror: boolean|nil, color: Color|string|nil, recolor: Color|string|nil, delay: number|nil, flight: number|nil, lifetime: number|nil, remain: number|nil, tag: string|nil}
+function MapFloorLua:AddBloodSpatter(options) end
+
+--- Removes blood spatter on this floor immediately, on this client only: every spatter added with the given tag, or all of it when tag is nil.
+--- @param tag string|nil
+function MapFloorLua:ClearBloodSpatter(tag) end
 
 --- GetNumberOfProjectiles
 --- @param tokenid? string

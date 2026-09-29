@@ -1082,8 +1082,15 @@ local function KeywordSummary(kw)
         end
     end)
     pcall(function()
-        if kw:try_get("powerRollEnabled", false) and kw:try_get("powerRollTiers") ~= nil then
+        if (kw:try_get("powerRollEnabled", false) and kw:try_get("powerRollTiers") ~= nil)
+            or trim(kw:try_get("entryEffectRule", "") or "") ~= "" then
             parts[#parts+1] = "Damaging"
+        end
+    end)
+    pcall(function()
+        local feature = kw:try_get("mapFeature")
+        if feature ~= nil and #feature.modifiers > 0 then
+            parts[#parts+1] = "Map-wide features"
         end
     end)
     pcall(function()

@@ -5527,6 +5527,7 @@ local g_beginRoundStyles = {
 }
 
 --- @class BeginRoundChatMessage: GameType
+--- @field new fun(o?: table): BeginRoundChatMessage
 BeginRoundChatMessage = RegisterGameType("BeginRoundChatMessage")
 BeginRoundChatMessage.round = 0
 function BeginRoundChatMessage.Render(self, message)
@@ -5596,6 +5597,7 @@ function BeginRoundChatMessage.Render(self, message)
 end
 
 --- @class StartOfTurnChatMessage: GameType
+--- @field new fun(o?: table): StartOfTurnChatMessage
 StartOfTurnChatMessage = RegisterGameType("StartOfTurnChatMessage")
 StartOfTurnChatMessage.tokenids = {}
 

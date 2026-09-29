@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class GameSystem: GameType
+--- @field new fun(o?: table): GameSystem
 --- @field rollTypes table[] Registered roll type descriptors for this game system.
 --- @field leveledProficiencyTypes table[] Proficiency types that scale with level.
 --- @field HitpointsName string Localized term for hit points.
@@ -36,6 +37,7 @@ local mod = dmhub.GetModLoading()
 GameSystem = RegisterGameType("GameSystem")
 
 --- @class RollRules: GameType
+--- @field new fun(o?: table): RollRules
 --- Settings and overrides for how a specific roll type is executed.
 RollRules = RegisterGameType("RollRules")
 

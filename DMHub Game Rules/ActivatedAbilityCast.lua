@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityCast: GameType
+--- @field new fun(o?: table): ActivatedAbilityCast
 --- @field damagedealt number
 --- @field damageraw number
 --- @field tier number

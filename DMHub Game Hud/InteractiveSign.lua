@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class SignInteractive: Interactive
+--- @field new fun(o?: table): SignInteractive
 SignInteractive = RegisterGameType("SignInteractive", "Interactive")
 
 SignInteractive.id = "Sign"
@@ -92,6 +93,7 @@ end
 --============================================================================
 
 --- @class SquishFx: GameType
+--- @field new fun(o?: table): SquishFx
 SquishFx = RegisterGameType("SquishFx")
 
 SquishFx.docid = "squishfx"
@@ -167,6 +169,7 @@ function SquishFx.CreateMonitorPanel()
 end
 
 --- @class SquishInteractive: Interactive
+--- @field new fun(o?: table): SquishInteractive
 SquishInteractive = RegisterGameType("SquishInteractive", "Interactive")
 
 SquishInteractive.id = "Squish"

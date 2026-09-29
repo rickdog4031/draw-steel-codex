@@ -1,8 +1,10 @@
 local mod = dmhub.GetModLoading()
 
 --- @class VisionType: GameType
+--- @field new fun(o?: table): VisionType
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name (e.g. "Darkvision", "Tremorsense").
---- @field tableName string Data table name ("VisionType").
+--- @field tableName "VisionType" Data table name ("VisionType").
 --- @field type string Vision behavior id: "none", "normal", or "dark".
 --- @field penetrateWalls boolean If true, this vision type can see through walls.
 --- @field fieldOfView boolean If true, field-of-view rules apply to this vision.

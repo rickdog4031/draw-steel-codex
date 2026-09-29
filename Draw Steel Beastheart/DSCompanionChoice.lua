@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CharacterCompanionChoice:CharacterChoice
+--- @field new fun(o?: table): CharacterCompanionChoice
 --- A class-feature choice for a Beastheart's companion species. Options are
 --- scanned at runtime from the bestiary (any monster with
 --- typeName == "AnimalCompanion"), matching the option set offered by the

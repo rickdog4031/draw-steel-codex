@@ -1133,8 +1133,8 @@ end
 --Attack cross-section: while hovering a target during ability targeting, a side-on
 --diagram of the terrain between the attacker and the target with the sightline the
 --cover rules used (see MovementCrossSection.SetAttackCrossSection). Only shown when
---the engine reports something vertical worth seeing (the creatures at different
---altitudes or airborne, ground rising/falling between them, a solid or height-limited
+--the engine reports something vertical worth seeing (the creatures on different
+--floors, at different altitudes or airborne, ground rising/falling between them, a solid or height-limited
 --wall crossed, or cover that came from the terrain) -- a flat shot shows nothing, so
 --ordinary targeting is unchanged. Rides the same "tiletooltip" event + diagram panel
 --as the movement diagram (GameHud.lua), anchored outside the attacker/target box so it
@@ -1164,8 +1164,7 @@ function CrossSection.ShowAttack(sourceToken, targetToken)
         CrossSection.ClearAttack()
         return
     end
-    if not sourceToken.valid or not targetToken.valid or sourceToken.floorIndex ~= targetToken.floorIndex
-       or sourceToken.charid == targetToken.charid then
+    if not sourceToken.valid or not targetToken.valid or sourceToken.charid == targetToken.charid then
         CrossSection.ClearAttack()
         return
     end
@@ -1184,7 +1183,8 @@ function CrossSection.ShowAttack(sourceToken, targetToken)
     end
 
     local text
-    local delta = (targetToken.altitude or 0) - (sourceToken.altitude or 0)
+    --absolute across floors (token.altitude is relative to the token's own floor).
+    local delta = result.altitudeDelta
     if delta > 0 then
         text = string.format(tr("Target is %d higher"), delta)
     elseif delta < 0 then
@@ -1196,6 +1196,8 @@ function CrossSection.ShowAttack(sourceToken, targetToken)
     local what = result.description
     if what == "ridge" then
         what = tr("the terrain")
+    elseif what == "floor" then
+        what = tr("the floor")
     elseif what == "none" or what == nil or what == "" then
         what = nil
     end

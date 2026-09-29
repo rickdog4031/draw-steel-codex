@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityStealAbilityBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityStealAbilityBehavior
 ActivatedAbilityStealAbilityBehavior = RegisterGameType("ActivatedAbilityStealAbilityBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityStealAbilityBehavior.summary = "Steal Ability"

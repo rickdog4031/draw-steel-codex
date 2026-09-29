@@ -1,9 +1,11 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CultureAspect: GameType
+--- @field new fun(o?: table): CultureAspect
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of the aspect.
 --- @field description string Descriptive text.
---- @field tableName string Data table name ("cultureAspects").
+--- @field tableName "cultureAspects" Data table name ("cultureAspects").
 --- @field category string Aspect category id: "environment", "organization", or "upbringing".
 CultureAspect = RegisterGameType("CultureAspect")
 

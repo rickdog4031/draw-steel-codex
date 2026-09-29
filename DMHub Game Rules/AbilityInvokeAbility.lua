@@ -1,9 +1,11 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityInvokeAbilityBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityInvokeAbilityBehavior
 ActivatedAbilityInvokeAbilityBehavior = RegisterGameType("ActivatedAbilityInvokeAbilityBehavior", "ActivatedAbilityBehavior")
 
 --- @class AbilityInvocation: GameType
+--- @field new fun(o?: table): AbilityInvocation
 AbilityInvocation = RegisterGameType("AbilityInvocation")
 
 AbilityUtils = {
@@ -1022,7 +1024,10 @@ function ActivatedAbilityInvokeAbilityBehavior:Cast(ability, casterToken, target
                         --double-charge makes the invoked ability unaffordable, so clear it.
                         --Safe to do on the clone: for custom/standard MakeTemporaryClone
                         --returned a fresh copy, and chooseClassAbility DeepCopies per target.
+                        --The invoker's action type is kept so rules keyed on it still see the
+                        --real action: Critical Hit needs Ability.Action on the roll this clone makes.
                         if self:try_get("suppressInvokedActionCost", false) then
+                            abilityClone.invokerActionResourceId = ability:ActionResource()
                             abilityClone.actionResourceId = "none"
                         end
 

@@ -130,6 +130,18 @@ function game.CreateMap(options) end
 --- @param oncomplete function Called when duplication is complete.
 function game.DuplicateMap(mapid, oncomplete) end
 
+--- Lists the maps in another of the user's games (one from lobby.games), in that game's map order. Each entry has the map's id, name, floorCount, and folder (the name of the folder it is in there, or nil). Reads the other game's data without entering it. Calls options.success with the list, or options.error with a message.
+--- @param options {gameid: string, success: nil|fun(maps: {id: string, name: string, floorCount: integer, folder: nil|string}[]), error: nil|fun(message: string)}
+function game.ListOtherGameMaps(options) end
+
+--- Looks up a preview for a map in another of the user's games. result.imported is true when the map was made from an imported image (it has an object with a Map component); then result.imageid is a bgimage id for that image, registered for this session; width and height are its pixel size when the image record has one, else 0 (usual for map images). Maps built by hand have no image. Downloads the map's floors, so call it only for maps being shown. Calls options.success with the result, or options.error with a message.
+--- @param options {gameid: string, mapid: string, success: nil|fun(result: {imported: boolean, imageid: nil|string, width: nil|integer, height: nil|integer}), error: nil|fun(message: string)}
+function game.GetOtherGameMapPreview(options) end
+
+--- Copies a map from another of the user's games into the current game under fresh ids: its floors, objects, walls and terrain, and the records of any images and custom objects it uses from that game's own asset store. Tokens, teleporter links and the map's folder are not copied; the copy goes at the top level of the map list, named options.name when given. Calls options.success with the new map's id, or options.error with a message.
+--- @param options {gameid: string, mapid: string, name: nil|string, success: nil|fun(mapid: string), error: nil|fun(message: string)}
+function game.ImportMapFromOtherGame(options) end
+
 --- Begin recording destructive map modifications (heightmap and terrain edits) into a persistent record. All map edits until EndRecordingMapModification is called are captured so they can be reverted later. Recordings with the same key merge into a single record, grouping the edits of one ability cast.
 --- @param options {key: nil|string, name: nil|string, casterid: nil|string, casterName: nil|string, floorid: nil|string, loc: nil|{x: number, y: number}}
 function game.BeginRecordingMapModification(options) end

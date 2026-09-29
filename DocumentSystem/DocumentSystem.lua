@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 
 ---@class CustomDocument: GameType
+--- @field new fun(o?: table): CustomDocument
 ---@field id string
 ---@field title string
 ---@field content false|string
@@ -4583,6 +4584,7 @@ GameHud.RegisterPresentableDialog {
 ----------------------------------------------------------------------
 
 --- @class PanelDocument: CustomDocument
+--- @field new fun(o?: table): PanelDocument
 PanelDocument = RegisterGameType("PanelDocument", "CustomDocument")
 PanelDocument.nodeType = "panel"
 PanelDocument.docType = "note"
@@ -5012,6 +5014,7 @@ end
 ----------------------------------------------------------------------
 
 --- @class CharacterPanelDocument: PanelDocument
+--- @field new fun(o?: table): CharacterPanelDocument
 CharacterPanelDocument = RegisterGameType("CharacterPanelDocument", "PanelDocument")
 CharacterPanelDocument.charid = ""
 CharacterPanelDocument.DefaultWidth = 400
@@ -21129,6 +21132,11 @@ MapButtons.rebuildPending = false
 ---                is preset to "panel", so click-away/Escape dismissal is free)
 ---   directorOnly true (the default) hides the button from players
 ---   ord          sort key; defaults to registration order
+---   alert        optional function() returning true (or a count, 2+ shows
+---                as a number) while the button needs attention: shows the
+---                rail's standard new-content marker on the button's top-right
+---                corner. Polled on the bar's 0.5s cadence; an error or a
+---                false/nil/0 result hides the marker.
 --- The bar rebuilds on the next frame.
 function MapButtons.Register(id, def)
     if type(id) ~= "string" or id == "" or type(def) ~= "table" then
@@ -21148,6 +21156,7 @@ function MapButtons.Register(id, def)
         icon = def.icon or "phosphor/lightning.png",
         tooltip = def.tooltip,
         click = def.click,
+        alert = def.alert,
         directorOnly = (def.directorOnly ~= false),
         ord = def.ord,
         seq = seq,
@@ -21260,6 +21269,56 @@ function MapButtons.CreateButton(def, index)
             vpad = 4,
             borderBox = true,
             textWrap = false,
+        },
+
+        --the alert marker: the rail's new-content badge on a 1x1 anchor at
+        --the top-right corner (same recipe as the rail button's). The
+        --registration is re-read each tick so a replaced def is live.
+        gui.Panel{
+            floating = true,
+            halign = "left",
+            valign = "top",
+            x = ICON_RAIL_BUTTON - 3,
+            y = 2,
+            width = 1,
+            height = 1,
+            flow = "none",
+            interactable = false,
+            data = { shownCount = nil },
+            create = function(element)
+                element:FireEvent("refreshRail")
+            end,
+            refreshRail = function(element)
+                local current = MapButtons.registry[id]
+                local count = nil
+                if current ~= nil and type(current.alert) == "function" then
+                    local ok, result = pcall(current.alert)
+                    if ok and result == true then
+                        count = 1
+                    elseif ok and type(result) == "number" and result >= 1 then
+                        count = math.floor(result)
+                    end
+                end
+                if count == element.data.shownCount then
+                    return
+                end
+                element.data.shownCount = count
+                if count == nil then
+                    element.children = {}
+                else
+                    element.children = {
+                        gui.NewContentAlert{
+                            count = count,
+                            size = 16,
+                            halign = "center",
+                            valign = "center",
+                            x = 0,
+                            y = 0,
+                            interactable = false,
+                        },
+                    }
+                end
+            end,
         },
 
         hover = function(element)

@@ -449,11 +449,7 @@ function ActivatedAbilityMovementCarrierBehavior:Cast(ability, casterToken, targ
     ability:CommitToPaying(casterToken, options)
     RemoveCarrierEffectInstances(instances, refreshTokens)
 
-    local sourceDescription = string.format(
-        "Applied by %s's <b>%s</b> ability",
-        creature.GetTokenDescription(casterToken),
-        ability.name
-    )
+    local sourceDescription = ActivatedAbility.DescribeEffectSource(ability, casterToken)
     refreshTokens[#refreshTokens+1] = targetToken
     ability.RecordTokenMessage(targetToken, options, string.format("Apply %s", effectInfo.name))
     targetToken:ModifyProperties{

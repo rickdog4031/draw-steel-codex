@@ -1,7 +1,9 @@
 local mod = dmhub.GetModLoading()
 
 --- @class Skill: GameType
---- @field tableName string Data table name ("Skills").
+--- @field new fun(o?: table): Skill
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
+--- @field tableName "Skills" Data table name ("Skills").
 --- @field name string Display name.
 --- @field attribute string Governing ability score id (e.g. "str", "dex").
 --- @field hasPassive boolean If true, a passive version of this skill exists.
@@ -10,6 +12,7 @@ local mod = dmhub.GetModLoading()
 Skill = RegisterGameType("Skill")
 
 --- @class SkillSpecialization: GameType
+--- @field new fun(o?: table): SkillSpecialization
 --- @field id string Unique identifier.
 --- @field name string Display name for this specialization.
 SkillSpecialization = RegisterGameType("SkillSpecialization")

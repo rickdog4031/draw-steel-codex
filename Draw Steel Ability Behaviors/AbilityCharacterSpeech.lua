@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityCharacterSpeechBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityCharacterSpeechBehavior
 ActivatedAbilityCharacterSpeechBehavior = RegisterGameType("ActivatedAbilityCharacterSpeechBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityCharacterSpeechBehavior.summary = 'Character Speech'

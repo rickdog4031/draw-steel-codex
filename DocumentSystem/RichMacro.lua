@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 ---@class RichMacro: RichTag
+--- @field new fun(o?: table): RichMacro
 RichMacro = RegisterGameType("RichMacro", "RichTag")
 RichMacro.tag = "macro"
 RichMacro.pattern = "^/(?<strike>[/~])?(?<command>.+)\\|(?<text>.*)$"

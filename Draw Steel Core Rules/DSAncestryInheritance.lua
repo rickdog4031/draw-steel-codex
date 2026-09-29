@@ -4,6 +4,7 @@ local mod = dmhub.GetModLoading()
 --ability to inherit ancestries as with Revenant.
 
 --- @class CharacterAncestryInheritanceChoice: CharacterChoice
+--- @field new fun(o?: table): CharacterAncestryInheritanceChoice
 CharacterAncestryInheritanceChoice = RegisterGameType("CharacterAncestryInheritanceChoice", "CharacterChoice")
 
 CharacterAncestryInheritanceChoice.ancestryid = "none"

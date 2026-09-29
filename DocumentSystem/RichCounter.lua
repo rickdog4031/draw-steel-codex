@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 ---@class RichCounter: RichTag
+--- @field new fun(o?: table): RichCounter
 RichCounter = RegisterGameType("RichCounter", "RichTag")
 RichCounter.tag = "counter"
 RichCounter.pattern = "^(?<number>[0-9]+)$"

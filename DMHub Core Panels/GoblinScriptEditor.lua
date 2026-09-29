@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class GoblinScriptTable: GameType
+--- @field new fun(o?: table): GoblinScriptTable
 GoblinScriptTable = RegisterGameType("GoblinScriptTable")
 GoblinScriptTable.id = "level"
 GoblinScriptTable.field = "Level"

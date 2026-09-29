@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class CommandDocument: CustomDocument
+--- @field new fun(o?: table): CommandDocument
 CommandDocument = RegisterGameType("CommandDocument", "CustomDocument")
 CommandDocument.command = ""
 
@@ -15,6 +16,7 @@ function CommandDocument:ShowDocument()
 end
 
 --- @class MonsterReferenceDocument: CustomDocument
+--- @field new fun(o?: table): MonsterReferenceDocument
 MonsterReferenceDocument = RegisterGameType("MonsterReferenceDocument", "CustomDocument")
 MonsterReferenceDocument.monsterid = ""
 
@@ -30,6 +32,7 @@ function MonsterReferenceDocument:ShowDocument()
 end
 
 --- @class PDFDeepLink: CustomDocument
+--- @field new fun(o?: table): PDFDeepLink
 PDFDeepLink = RegisterGameType("PDFDeepLink", "CustomDocument")
 PDFDeepLink.docid = ""
 PDFDeepLink.page = "C"
@@ -53,6 +56,7 @@ function PDFDeepLink:PreviewDescription()
 end
 
 --- @class MapDocument: CustomDocument
+--- @field new fun(o?: table): MapDocument
 MapDocument = RegisterGameType("MapDocument", "CustomDocument")
 MapDocument.mapid = ""
 MapDocument.nodeType = "map"
@@ -91,6 +95,7 @@ end
 --moves), and opens the bubble's info dialog - the same one clicking the
 --bubble on the map shows.
 --- @class BubbleDocument: CustomDocument
+--- @field new fun(o?: table): BubbleDocument
 BubbleDocument = RegisterGameType("BubbleDocument", "CustomDocument")
 BubbleDocument.mapid = ""      --"" = the current map
 BubbleDocument.bubblename = "" --matched against bubble icon and description
@@ -806,6 +811,7 @@ function CustomDocument.OpenContent(node)
 end
 
 --- @class CustomDocumentRef: GameType
+--- @field new fun(o?: table): CustomDocumentRef
 CustomDocumentRef = RegisterGameType("CustomDocumentRef")
 
 CustomDocumentRef.docid = ""

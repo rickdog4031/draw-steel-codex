@@ -244,6 +244,7 @@ end
 --- Renders live from the shared reveal document, so the director can hide the
 --- spoiler again from the message itself and players' views update in place.
 --- @class SpoilerRevealChatMessage: GameType
+--- @field new fun(o?: table): SpoilerRevealChatMessage
 SpoilerRevealChatMessage = RegisterGameType("SpoilerRevealChatMessage")
 SpoilerRevealChatMessage.spoilerKey = ""
 SpoilerRevealChatMessage.spoilerName = ""
@@ -4291,6 +4292,33 @@ function GameHud.CreateEmbeddedRollDialog()
         doRerollAmend(g_activeRollArgs.originalRoll or g_activeRollArgs.roll)
     end
 
+    --The `state` handed to a re-roll rule's callbacks (see "Re-roll rules" in
+    --DSRollDialog.lua). total/finished describe the roll on screen, so a rule
+    --can depend on the result (e.g. only offer itself on a failed save).
+    local function RerollRuleStateArgs()
+        return {
+            options = m_options,
+            creature = creature,
+            rerollsUsed = m_rerollsUsed,
+            total = tonumber(m_rollTotalLabel ~= nil and m_rollTotalLabel.text or nil),
+            finished = resultPanel ~= nil and resultPanel.valid and resultPanel:HasClass("finishedRolling"),
+            rollInfo = m_rollInfo,
+            accept = function()
+                proceedAfterRollButton:FireEvent("press")
+            end,
+        }
+    end
+
+    --The rule that owns the button right now: a rule whose Applies(state) says
+    --no steps aside, and the button is the plain free Re-roll meanwhile.
+    local function ActiveRerollRule(state)
+        local rule = m_rerollRule
+        if rule ~= nil and rule.Applies ~= nil and not rule.Applies(state) then
+            return nil
+        end
+        return rule
+    end
+
     --The cost glyph a rule can put on the Re-roll button (a Hero Token, say).
     --Built once and re-pointed per roll; collapsed for the plain free Re-roll.
     --Deliberately NOT the theme's buttonIcon class: that is for icon-ONLY
@@ -4351,9 +4379,11 @@ function GameHud.CreateEmbeddedRollDialog()
         --spent elsewhere -- another player's Hero Token -- while this sits
         --open).
         refreshRerollRule = function(element)
-            local rule = m_rerollRule
+            local state = RerollRuleStateArgs()
+            local rule = ActiveRerollRule(state)
 
             element.text = (rule ~= nil and rule.text) or "Re-roll"
+            element.selfStyle.fontSize = (rule ~= nil and rule.fontSize) or 20
 
             local icon = rule ~= nil and rule.icon or nil
             rerollIcon:SetClass("collapsed", icon == nil)
@@ -4362,13 +4392,13 @@ function GameHud.CreateEmbeddedRollDialog()
                 rerollIcon.selfStyle.bgcolor = rule.iconColor or "white"
             end
 
+            --Pad the caption clear of the glyph. A button's lpad becomes its
+            --caption's margin; the glyph child is not moved by it.
+            element.selfStyle.lpad = cond(icon ~= nil, 28, nil)
+
             local enabled, tooltip = true, nil
             if rule ~= nil then
-                enabled, tooltip = RollDialog.RerollRuleState(rule, {
-                    options = m_options,
-                    creature = creature,
-                    rerollsUsed = m_rerollsUsed,
-                })
+                enabled, tooltip = RollDialog.RerollRuleState(rule, state)
             end
 
             element:SetClass("disabled", not enabled)
@@ -4386,7 +4416,9 @@ function GameHud.CreateEmbeddedRollDialog()
                 proceedAfterRollButton.selfStyle.halign = cond(hidden, "center", "right")
             end
 
-            element.thinkTime = cond(rule ~= nil, 1, nil)
+            --Keyed off the roll's rule, not the active one: a rule that has
+            --stepped aside must keep polling so it can take the button back.
+            element.thinkTime = cond(m_rerollRule ~= nil, 1, nil)
         end,
 
         think = function(element)
@@ -4394,14 +4426,9 @@ function GameHud.CreateEmbeddedRollDialog()
         end,
 
         press = function(element)
-            local rule = m_rerollRule
+            local state = RerollRuleStateArgs()
+            local rule = ActiveRerollRule(state)
             if rule ~= nil then
-                local state = {
-                    options = m_options,
-                    creature = creature,
-                    rerollsUsed = m_rerollsUsed,
-                }
-
                 --Re-check rather than trust the last refresh: the button is
                 --still pressable while greyed out, and the cost may have been
                 --spent elsewhere since.
@@ -4412,6 +4439,13 @@ function GameHud.CreateEmbeddedRollDialog()
 
                 if rule.Pay ~= nil and rule.Pay(state) == false then
                     element:FireEvent("refreshRerollRule")
+                    return
+                end
+
+                --A rule that buys something other than a re-roll (a Hero
+                --Token's "Succeed Instead" on a save) does it here instead.
+                if rule.Perform ~= nil then
+                    rule.Perform(state)
                     return
                 end
             end
@@ -6778,6 +6812,9 @@ function GameHud.CreateEmbeddedRollDialog()
                             UpdateArrowLabelsWithTierResults()
                             BroadcastDialogState()
                             resultPanel:SetClassTree("rollPending", true)
+                            --The result is now known; a rule that depends on it
+                            --(Hero Token "Succeed Instead") re-dresses the button.
+                            rollAgainButton:FireEvent("refreshRerollRule")
                             if m_triggerProgressDice ~= nil then
                                 m_triggerProgressDice:FireEvent("pending")
                             else

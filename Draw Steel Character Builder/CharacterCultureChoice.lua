@@ -10,8 +10,10 @@
     for purposes of the character builder.
 ]]
 --- @class CharacterAspectChoice: CharacterChoice
+--- @field new fun(o?: table): CharacterAspectChoice
 CharacterAspectChoice = RegisterGameType("CharacterAspectChoice", "CharacterChoice")
 --- @class CharacterCultureAggregateChoice: CharacterChoice
+--- @field new fun(o?: table): CharacterCultureAggregateChoice
 CharacterCultureAggregateChoice = RegisterGameType("CharacterCultureAggregateChoice", "CharacterChoice")
 
 CharacterAspectChoice.description = "Culture Aspect Choice"

@@ -48,8 +48,7 @@ can buy it; it lands in your account and can be brought into a game you run.
 **The store can already sell content.** `ShopItem.ItemType` includes `Module`
 (ShopInfo.cs:412); `Module.premium` (Module.cs:4283), `Module.owned`
 (Module.cs:4137, inventory walk or Patreon entitlement), buy-prompt in
-ModShare.lua:4775, auto-install on ownership (GameController.cs:10180,
-`autoInstallShopModules`). Content sells at MODULE granularity only; no
+ModShare.lua:4775. Content sells at MODULE granularity only; no
 per-asset gating exists. So "sell an adventure" is mostly presentation +
 commerce-path work, not a new entitlement system.
 
@@ -120,8 +119,8 @@ ordered "adventure documents" list exists per-game (Journal.lua:149-238,
 slash-command only, lives in game state not the module).
 
 **Fields ready to reuse:** `Module.publishingProperties` (free-form table --
-obvious home for level range, session count, chapters); `ShopItem.autoInstall`
-for modules with customer toggle; `ShopItem.bundle` unexploited for modules.
+obvious home for level range, session count, chapters); `ShopItem.bundle`
+unexploited for modules.
 
 **Gotchas/risks found:**
 - `premium`/`published` are CLIENT-WRITABLE (database.rules.json:284-297) --
@@ -182,7 +181,7 @@ rotatable 3D book.
 4. **Commerce posture** -- Steam MTX vs Shopify dual-listing; the MCDM
    white-label hasStoreAccess=false + forced dev-pref must be resolved
    deliberately. OWNED BY DAVID (2026-09-21) -- out of this brief's scope.
-5. **Delivery & updates** -- ownership -> auto-install -> coverdoc opens;
+5. **Delivery & updates** -- ownership -> install -> coverdoc opens;
    update policy (re-install overwrites director edits today).
    OWNED BY DAVID (Venla 2026-09-21) -- out of this brief's scope; the
    overwrite risk is recorded above for him.

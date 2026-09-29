@@ -191,6 +191,79 @@ function creature:GetHeroTokenHistory()
     return CharacterResource.GetGlobalResourceHistory(CharacterResource.heroTokenId)
 end
 
+--Whether a creature has the named complication. pcall: Complications() is a
+--hero-side method and a creature-typed monster may not carry it.
+--- @param c creature|nil
+--- @param name string
+--- @return boolean
+local function HasComplication(c, name)
+    if c == nil then
+        return false
+    end
+    local found = false
+    pcall(function()
+        for _, complication in ipairs(c:Complications()) do
+            if complication.name == name then
+                found = true
+            end
+        end
+    end)
+    return found
+end
+
+--Spend 1 Hero Token on a test re-roll or a saving throw. Lucky complication:
+--"roll a d10. On a 6 or higher, you gain the benefit but don't spend the hero
+--token." The token is taken now so the benefit never waits on the d10, and
+--handed back if the d10 comes up 6+.
+--Re-reads the pool rather than trusting an earlier check, so a token spent
+--elsewhere in the meantime cannot take the pool negative.
+--- @param c creature|nil the hero spending the token
+--- @param note string the pool history entry
+--- @return boolean paid
+function CharacterResource.SpendHeroTokenForRoll(c, note)
+    local tokens = CharacterResource.GetGlobalResource(CharacterResource.heroTokenId)
+    if tokens < 1 then
+        return false
+    end
+    CharacterResource.SetGlobalResource(CharacterResource.heroTokenId, tokens - 1, note)
+
+    if HasComplication(c, "Lucky") then
+        ---@cast c creature
+        dmhub.Roll{
+            roll = "1d10",
+            description = "Lucky",
+            tokenid = dmhub.LookupTokenId(c),
+            creature = c,
+            complete = function(rollInfo)
+                if (rollInfo.total or 0) < 6 then
+                    return
+                end
+                local now = CharacterResource.GetGlobalResource(CharacterResource.heroTokenId)
+                CharacterResource.SetGlobalResource(CharacterResource.heroTokenId, now + 1, "Lucky: Hero Token not spent")
+                local send = rawget(_G, "SendTitledChatMessage")
+                if send ~= nil then
+                    send(string.format("%s's luck holds: the Hero Token is not spent.", c:try_get("name") or "The hero"), "Lucky", "#e0b84c")
+                end
+            end,
+        }
+    end
+
+    return true
+end
+
+--Whether the test behind a finished roll was re-rolled with a Hero Token.
+--HeroTokenTestRerollRule marks the roll's properties when it pays. Lucky's
+--drawback reads this through the rollpower trigger's Hero Token Reroll symbol.
+--- @param rollInfo any
+--- @return boolean
+function CharacterResource.RollUsedHeroTokenReroll(rollInfo)
+    local used = false
+    pcall(function()
+        used = rollInfo.properties:try_get("heroTokenReroll", false) == true
+    end)
+    return used
+end
+
 --A hero may spend 1 Hero Token to re-roll a test, and must use the new roll --
 --so one re-roll per test. Expressed as a roll-dialog re-roll rule (see the
 --"Re-roll rules" block in DSRollDialog.lua): it replaces the dialog's free
@@ -213,17 +286,57 @@ function CharacterResource.HeroTokenTestRerollRule()
             return true
         end,
 
-        --Read-modify-write on the shared pool, the same way the Hero Tokens box
-        --on the character panel spends them. Re-read here rather than trusting
-        --what CanReroll saw, so a token spent elsewhere between the hover and
-        --the press cannot take the pool negative.
+        --Also marks the roll as Hero-Token re-rolled for Lucky's drawback. The
+        --roll's chat message keeps the properties uploaded with the first roll
+        --and a re-roll does not refresh them, so upload the mark explicitly.
         Pay = function(state)
-            local tokens = CharacterResource.GetGlobalResource(CharacterResource.heroTokenId)
-            if tokens < 1 then
+            if not CharacterResource.SpendHeroTokenForRoll(state.creature, "Re-rolled a test") then
                 return false
             end
-            CharacterResource.SetGlobalResource(CharacterResource.heroTokenId, tokens - 1, "Re-rolled a test")
+            local props = state.options ~= nil and state.options.rollProperties or nil
+            if props ~= nil then
+                props.heroTokenReroll = true
+                if state.rollInfo ~= nil then
+                    pcall(function() state.rollInfo:UploadProperties(props) end)
+                end
+            end
             return true
+        end,
+    }
+end
+
+--A hero may spend 1 Hero Token to succeed on a saving throw they failed. A
+--re-roll rule (see "Re-roll rules" in DSRollDialog.lua) that takes over the
+--roll dialog's Re-roll button only while the save on screen is a failure.
+--  args.IsFailed(state) -> boolean  whether the save as rolled has failed.
+--  args.Succeed(state)              called once the token is paid; makes the
+--                                   save succeed and accepts the result.
+--- @param args {IsFailed: (fun(state: table): boolean), Succeed: (fun(state: table))}
+--- @return table
+function CharacterResource.HeroTokenSaveSucceedRule(args)
+    return {
+        text = "Succeed Instead",
+        fontSize = 16,
+        icon = "drawsteel/hero-token.png",
+        tooltip = "1 Hero Token: Succeed on this saving throw instead.",
+
+        Applies = function(state)
+            return args.IsFailed(state) and CharacterResource.GetGlobalResource(CharacterResource.heroTokenId) >= 1
+        end,
+
+        CanReroll = function(state)
+            if CharacterResource.GetGlobalResource(CharacterResource.heroTokenId) < 1 then
+                return false, "You have no Hero Tokens to spend."
+            end
+            return true
+        end,
+
+        Pay = function(state)
+            return CharacterResource.SpendHeroTokenForRoll(state.creature, "Succeeded on a saving throw")
+        end,
+
+        Perform = function(state)
+            args.Succeed(state)
         end,
     }
 end

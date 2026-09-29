@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityRaiseCorpseBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityRaiseCorpseBehavior
 ActivatedAbilityRaiseCorpseBehavior = RegisterGameType("ActivatedAbilityRaiseCorpseBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

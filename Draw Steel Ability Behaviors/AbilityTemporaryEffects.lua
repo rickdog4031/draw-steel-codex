@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 
 --- @class ActivatedAbilityApplyAbilityDurationEffect: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityApplyAbilityDurationEffect
 ActivatedAbilityApplyAbilityDurationEffect = RegisterGameType("ActivatedAbilityApplyAbilityDurationEffect", "ActivatedAbilityBehavior")
 
 ActivatedAbility.RegisterType

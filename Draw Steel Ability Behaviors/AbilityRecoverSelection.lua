@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityRecoverySelectionBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityRecoverySelectionBehavior
 ActivatedAbilityRecoverySelectionBehavior = RegisterGameType("ActivatedAbilityRecoverySelectionBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityRecoverySelectionBehavior.summary = "Recovery Selection"

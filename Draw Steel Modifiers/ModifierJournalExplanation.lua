@@ -111,6 +111,7 @@ CharacterModifier.TypeInfo.journalexplanation = {
 -- plus explanation text gathered from journalexplanation modifiers on the caster.
 
 --- @class ActivatedAbilityShowJournalBehavior: ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityShowJournalBehavior
 ActivatedAbilityShowJournalBehavior = RegisterGameType("ActivatedAbilityShowJournalBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbilityShowJournalBehavior.summary = "Show Journal"

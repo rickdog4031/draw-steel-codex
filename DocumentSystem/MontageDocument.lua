@@ -3,6 +3,7 @@ local mod = dmhub.GetModLoading()
 local g_numbers = { "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight" }
 
 ---@class MontageDocument:CustomDocument
+--- @field new fun(o?: table): MontageDocument
 ---@field scene string
 ---@field summary string
 ---@field twist string
@@ -35,6 +36,7 @@ function MontageDocument:GetDifficultyInfo(numHeroes)
 end
 
 ---@class MontageChallenge: GameType
+--- @field new fun(o?: table): MontageChallenge
 ---@field name string
 ---@field details string
 ---@field characteristics table<string,boolean>
@@ -45,9 +47,11 @@ MontageChallenge.details = ""
 MontageChallenge.maximum = 1
 
 ---@class MontageConsequence: GameType
+--- @field new fun(o?: table): MontageConsequence
 MontageConsequence = RegisterGameType("MontageConsequence")
 
 ---@class MontageOutcome: GameType
+--- @field new fun(o?: table): MontageOutcome
 ---@field text string
 ---@field victoriesHard number
 ---@field victoriesMedium number
@@ -58,12 +62,14 @@ MontageOutcome.victoriesHard = 0
 MontageOutcome.victoriesMedium = 0
 
 ---@class LiveMontageParticipant: GameType
+--- @field new fun(o?: table): LiveMontageParticipant
 ---@field tokenid string
 LiveMontageParticipant = RegisterGameType("LiveMontageParticipant")
 LiveMontageParticipant.tokenid = ""
 
 --representation of an actual montage test in flight.
 ---@class LiveMontage: GameType
+--- @field new fun(o?: table): LiveMontage
 ---@field participants table<string, LiveMontageParticipant>
 LiveMontage = RegisterGameType("LiveMontage")
 LiveMontage.participants = {}
@@ -1202,6 +1208,7 @@ GameHud.RegisterPresentableDialog {
 --that iterate the montage set must now filter on docType=="montage" because
 --the documents table holds every journal document.
 --- @class MontageTest: MontageDocument
+--- @field new fun(o?: table): MontageTest
 MontageTest = RegisterGameType("MontageTest", "MontageDocument")
 MontageTest.tableName = CustomDocument.tableName   --"documents" (was "montageTests")
 

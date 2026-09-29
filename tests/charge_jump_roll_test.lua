@@ -79,6 +79,7 @@ function tok:Move(target, options)
     return {numSteps = distance}
 end
 --- @class RollPropertiesPowerTable: GameType
+--- @field new fun(o?: table): RollPropertiesPowerTable
 RollPropertiesPowerTable = RegisterGameType("RollPropertiesPowerTable")
 RollUtils = {DiceResultToTier = function() return selectedTier end}
 Skill = {tableName = "skills"}

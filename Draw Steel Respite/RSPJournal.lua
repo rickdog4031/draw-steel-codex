@@ -5,6 +5,7 @@ local mod = dmhub.GetModLoading()
 --- the session is cleared away. The activities supply their own words: this
 --- file knows how to lay a document out and nothing about what happened in it.
 --- @class RSPJournal: GameType
+--- @field new fun(o?: table): RSPJournal
 RSPJournal = RegisterGameType("RSPJournal")
 
 --- The folder the write-ups go in, or nil when it does not exist yet

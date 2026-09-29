@@ -70,6 +70,7 @@ local function common_suffix_length(a, b)
 end
 
 ---@class TextStorage: GameType
+--- @field new fun(o?: table): TextStorage
 TextStorage = RegisterGameType("TextStorage")
 
 --The digit value of the i'th char of a key, or nil past the end of the key.

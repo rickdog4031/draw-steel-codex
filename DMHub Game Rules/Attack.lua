@@ -6,6 +6,7 @@ local mod = dmhub.GetModLoading()
 --is performed inside of the activated ability which will modify what exactly happens when the attack is used.
 
 --- @class Attack: GameType
+--- @field new fun(o?: table): Attack
 --- @field name string Display name of the attack.
 --- @field iconid string Asset id for the attack icon.
 --- @field range nil|string Range string (e.g. "5", "20/60", "touch").

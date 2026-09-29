@@ -2,6 +2,7 @@ local mod = dmhub.GetModLoading()
 
 --- Director Step 2: who is taking the Respite, while the players answer.
 --- @class RSPDirectorPartPanel: GameType
+--- @field new fun(o?: table): RSPDirectorPartPanel
 RSPDirectorPartPanel = RegisterGameType("RSPDirectorPartPanel")
 
 local INSTRUCTIONS = [[

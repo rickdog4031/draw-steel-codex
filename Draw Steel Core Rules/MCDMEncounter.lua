@@ -44,6 +44,8 @@ local g_numHeroesSetting = setting {
 }
 
 --- @class Encounter: GameType
+--- @field new fun(o?: table): Encounter
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 Encounter = RegisterGameType('Encounter')
 
 Encounter.name = 'New Encounter'
@@ -1512,6 +1514,8 @@ end
 -- LiveEncounter so it is its own distinct type -- it inherits all of Encounter's
 -- fields and methods but can carry live-only state and extensions.
 --- @class LiveEncounter: Encounter
+--- @field new fun(o?: table): LiveEncounter
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 LiveEncounter = RegisterGameType("LiveEncounter", "Encounter")
 
 -- Its own table name so it is distinguished from authored encounters.
@@ -4471,6 +4475,8 @@ end
 -- clients never execute encounter-script code.
 
 --- @class EncounterScript: GameType
+--- @field new fun(o?: table): EncounterScript
+--- @field id string Key of this row in its data table; SetAndUploadTableItem sets it.
 --- @field name string Display name of the library script.
 --- @field description string What the script does, shown in pickers and the compendium.
 --- @field code string The Lua source; must return a definition table.
@@ -4802,6 +4808,7 @@ end
 -- ---------------------------------------------------------------------------
 
 --- @class EncounterScriptInstance: GameType
+--- @field new fun(o?: table): EncounterScriptInstance
 --- @field scriptid string Id into the encounterScripts table or a "builtin:" id; "" = inline custom code.
 --- @field code string Inline Lua source (custom scripts only).
 --- @field name string Cached display name, refreshed from the definition at edit time.

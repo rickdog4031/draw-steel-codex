@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 ---@class RichBar: RichTag
+--- @field new fun(o?: table): RichBar
 RichBar = RegisterGameType("RichBar", "RichTag")
 RichBar.tag = "bar"
 RichBar.pattern = "^(?<text>#+-*|#*-+)$"

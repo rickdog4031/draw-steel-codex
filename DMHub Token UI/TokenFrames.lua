@@ -73,6 +73,50 @@ for _, def in pairs(TokenFrames.definitions) do
     dmhub.tokenFrames:Register(def)
 end
 
+--- Register a frame definition (or replace one with the same id) in both the Lua
+--- catalogue and the engine registry. Tokens already showing the id re-light on the
+--- next frame, so the Token Studio calls this on every edit for a live preview.
+--- @param def TokenFrameDefinition
+function TokenFrames.RegisterDefinition(def)
+    if def == nil or def.id == nil or def.id == "" or def.albedo == nil or def.albedo == "" then
+        return
+    end
+    TokenFrames.definitions[def.id] = def
+    dmhub.tokenFrames:Register(def)
+end
+
+--- Drop a frame definition from the Lua catalogue. The engine registry keeps its
+--- entry (there is no unregister), so tokens using the id still render until reload.
+--- @param id string
+function TokenFrames.RemoveDefinition(id)
+    if id ~= nil then
+        TokenFrames.definitions[id] = nil
+    end
+end
+
+--- Frames uploaded from the Token Studio live in the core asset store and are
+--- registered with the engine on every asset refresh (TokenFramesLua.SyncFromCloud).
+--- Mirror them into the Lua catalogue so TokenFrames.Ids / Apply know them. The
+--- member is absent on engine builds that predate the studio, hence the pcall.
+--- @return number The number of cloud frames merged in.
+function TokenFrames.SyncFromCloud()
+    local ok, cloud = pcall(function() return dmhub.tokenFrames.cloudFrames end)
+    if not ok or type(cloud) ~= "table" then
+        return 0
+    end
+    local count = 0
+    for id, def in pairs(cloud) do
+        if type(def) == "table" and def.albedo ~= nil and def.albedo ~= "" then
+            def.id = def.id or id
+            TokenFrames.definitions[id] = def
+            count = count + 1
+        end
+    end
+    return count
+end
+
+TokenFrames.SyncFromCloud()
+
 --- Ids of every registered frame, sorted by display name.
 --- @return string[]
 function TokenFrames.Ids()
@@ -81,7 +125,7 @@ function TokenFrames.Ids()
         ids[#ids + 1] = id
     end
     table.sort(ids, function(a, b)
-        return TokenFrames.definitions[a].name < TokenFrames.definitions[b].name
+        return (TokenFrames.definitions[a].name or a) < (TokenFrames.definitions[b].name or b)
     end)
     return ids
 end
@@ -106,7 +150,9 @@ function TokenFrames.Apply(token, id, restoreFrame)
         return
     end
 
-    local def = TokenFrames.definitions[id]
+    --Prefer the Lua catalogue; fall back to the engine registry, which also holds
+    --frames registered directly (Token Studio drafts, cloud frames on a fresh refresh).
+    local def = TokenFrames.definitions[id] or dmhub.tokenFrames:Get(id)
     if def == nil then
         dmhub.Error("TokenFrames.Apply: no frame registered with id " .. tostring(id))
         return

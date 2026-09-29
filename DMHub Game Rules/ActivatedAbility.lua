@@ -19,6 +19,7 @@ end
 --- @alias Symbols table|function
 
 --- @class ActivatedAbility: GameType
+--- @field new fun(o?: table): ActivatedAbility
 --- @field description string Rules text shown to players.
 --- @field flavor string Flavor/lore text shown in the ability tooltip.
 --- @field range number|string|table Targeting range in world units.
@@ -27,6 +28,7 @@ end
 --- @field rangeDisadvantage string|number|table GoblinScript: if truthy, ranged attacks have disadvantage.
 --- @field selfTarget boolean If true, the ability always targets the caster.
 --- @field castImmediately boolean If true, auto-casts when there are no targeting choices.
+--- @field environmentalSource boolean|nil If true, the ability is the environment acting (a zone, a trap, terrain) rather than the creature casting it: effects it applies are attributed to the ability by name ("Applied by <b>Burning Oil</b>") instead of to the caster, who is only whoever the effect landed on. Set on abilities synthesized by Aura:GetSimplePowerRollTrigger and Aura:GetSimpleEntryEffectTrigger; set it in data on environmental triggers.
 --- @field environmentRoll boolean|nil If true, the ability's power roll is made by the environment: the caster only executes the roll and it counts as a roll made AGAINST them (their own modifiers are excluded; their defensive "rolls against you" modifiers apply even on a self-cast). Set on abilities synthesized by Aura:GetSimplePowerRollTrigger.
 --- @field recharge boolean|number Recharge roll threshold (false = no recharge mechanic).
 --- @field legendary boolean If true, this is a legendary action.
@@ -56,6 +58,7 @@ end
 ActivatedAbility = RegisterGameType("ActivatedAbility")
 
 --- @class ActivatedAbilityBehavior: GameType
+--- @field new fun(o?: table): ActivatedAbilityBehavior
 --- @field instant boolean If true, executes immediately (not in a coroutine).
 --- @field customOngoingEffect boolean If true, uses a custom ongoing effect rather than the default.
 --- @field duration string|number|nil Duration type for the effect ("none" by default).
@@ -69,48 +72,63 @@ ActivatedAbility = RegisterGameType("ActivatedAbility")
 ActivatedAbilityBehavior = RegisterGameType("ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityAttackBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityAttackBehavior
 ActivatedAbilityAttackBehavior = RegisterGameType("ActivatedAbilityAttackBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityDamageBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityDamageBehavior
 ActivatedAbilityDamageBehavior = RegisterGameType("ActivatedAbilityDamageBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityHealBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityHealBehavior
 ActivatedAbilityHealBehavior = RegisterGameType("ActivatedAbilityHealBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilitySetStaminaBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilitySetStaminaBehavior
 ActivatedAbilitySetStaminaBehavior = RegisterGameType("ActivatedAbilitySetStaminaBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityAugmentedAbilityBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityAugmentedAbilityBehavior
 ActivatedAbilityAugmentedAbilityBehavior = RegisterGameType("ActivatedAbilityAugmentedAbilityBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityCastSpellBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityCastSpellBehavior
 ActivatedAbilityCastSpellBehavior = RegisterGameType("ActivatedAbilityCastSpellBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityApplyOngoingEffectBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityApplyOngoingEffectBehavior
 ActivatedAbilityApplyOngoingEffectBehavior = RegisterGameType("ActivatedAbilityApplyOngoingEffectBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityRemoveOngoingEffectBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityRemoveOngoingEffectBehavior
 ActivatedAbilityRemoveOngoingEffectBehavior = RegisterGameType("ActivatedAbilityRemoveOngoingEffectBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityAuraBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityAuraBehavior
 ActivatedAbilityAuraBehavior = RegisterGameType("ActivatedAbilityAuraBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityMoveAuraBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityMoveAuraBehavior
 ActivatedAbilityMoveAuraBehavior = RegisterGameType("ActivatedAbilityMoveAuraBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityTransformBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityTransformBehavior
 ActivatedAbilityTransformBehavior = RegisterGameType("ActivatedAbilityTransformBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityContestedAttackBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityContestedAttackBehavior
 ActivatedAbilityContestedAttackBehavior = RegisterGameType("ActivatedAbilityContestedAttackBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityForcedMovementBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityForcedMovementBehavior
 ActivatedAbilityForcedMovementBehavior = RegisterGameType("ActivatedAbilityForcedMovementBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityModifiersBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityModifiersBehavior
 ActivatedAbilityModifiersBehavior = RegisterGameType("ActivatedAbilityModifiersBehavior", "ActivatedAbilityBehavior")
 
 --- @class ActivatedAbilityApplyMomentaryEffectBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityApplyMomentaryEffectBehavior
 ActivatedAbilityApplyMomentaryEffectBehavior = RegisterGameType("ActivatedAbilityApplyMomentaryEffectBehavior", "ActivatedAbilityBehavior")
 
 ActivatedAbility.description = ""
@@ -2660,6 +2678,7 @@ end
 ActivatedAbility.recordTargets = false
 
 --- @class CastActivatedAbilityChatMessage: GameType
+--- @field new fun(o?: table): CastActivatedAbilityChatMessage
 --- @field ability ActivatedAbility
 CastActivatedAbilityChatMessage = RegisterGameType("CastActivatedAbilityChatMessage")
 
@@ -5261,7 +5280,7 @@ function ActivatedAbilityApplyOngoingEffectBehavior:Cast(ability, casterToken, t
 					return
 				end
 
-                local sourceDescription = string.format("Applied by %s's <b>%s</b> ability", creature.GetTokenDescription(casterToken), ability.name)
+                local sourceDescription = ActivatedAbility.DescribeEffectSource(ability, casterToken)
 
                 if stacks > 1 then
                     ability.RecordTokenMessage(target.token, options, string.format("Apply %s x %d", ongoingEffectInfo.name, stacks))
@@ -5432,7 +5451,7 @@ function ActivatedAbilityApplyOngoingEffectBehavior:CastFromFormula(ability, cas
                     if stacks == nil then return end
 
                     local targetCreature = target.token.properties
-                    local sourceDescription = string.format("Applied by %s's <b>%s</b> ability", creature.GetTokenDescription(casterToken), ability.name)
+                    local sourceDescription = ActivatedAbility.DescribeEffectSource(ability, casterToken)
                     ability.RecordTokenMessage(target.token, options, string.format("Apply %s", ongoingEffectInfo.name))
 
                     local applyDuration = self:try_get("duration")
@@ -6657,3 +6676,16 @@ dmhub.RegisterEventHandler("restoreFromBackup", function()
     end
     dmhub.CancelCurrentRoll()
 end)
+
+--- The "Applied by ..." line recorded on an ongoing effect an ability applies. An
+--- ability flagged environmentalSource (a zone or trap effect) names itself, since
+--- its caster is just the creature it landed on; otherwise it names the caster.
+--- @param ability ActivatedAbility
+--- @param casterToken CharacterToken
+--- @return string
+function ActivatedAbility.DescribeEffectSource(ability, casterToken)
+    if ability:try_get("environmentalSource", false) then
+        return string.format("Applied by <b>%s</b>", ability.name)
+    end
+    return string.format("Applied by %s's <b>%s</b> ability", creature.GetTokenDescription(casterToken), ability.name)
+end

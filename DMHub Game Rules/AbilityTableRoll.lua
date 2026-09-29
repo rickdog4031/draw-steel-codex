@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
 --- @class ActivatedAbilityTableRollBehavior:ActivatedAbilityBehavior
+--- @field new fun(o?: table): ActivatedAbilityTableRollBehavior
 --- @field summary string Short label shown in behavior lists.
 --- @field tableType string Source of the table: "custom" or a built-in type id.
 --- @field tableid string Id of the table to roll on.

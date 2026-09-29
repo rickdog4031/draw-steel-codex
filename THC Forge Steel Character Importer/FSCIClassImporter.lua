@@ -2,6 +2,7 @@
 --- into the Codex character system. Encapsulates all class-related import logic
 --- including kits, class features, subclasses, and deity selections.
 --- @class FSCIClassImporter: GameType
+--- @field new fun(o?: table): FSCIClassImporter
 --- @field fsClass table The Forge Steel class data to import
 --- @field character table The Codex character being built
 FSCIClassImporter = RegisterGameType("FSCIClassImporter")

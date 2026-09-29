@@ -5,6 +5,7 @@ local mod = dmhub.GetModLoading()
 --- which step the session's phase calls for, and when the window has outlived
 --- the Respite it was following.
 --- @class RSPShell: GameType
+--- @field new fun(o?: table): RSPShell
 RSPShell = RegisterGameType("RSPShell")
 
 --- How many Respite windows this client has open. The Director's offer asks

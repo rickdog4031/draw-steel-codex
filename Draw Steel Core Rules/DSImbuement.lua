@@ -3,6 +3,7 @@
 ]]
 
 --- @class DSImbuement: GameType
+--- @field new fun(o?: table): DSImbuement
 --- @field imbueTargetType string The equipment type this imbuement applies to: "armor", "implement", or "weapon".
 --- @field imbueLevel number Imbuement tier level (1, 5, or 9 correspond to kit tiers).
 --- @field imbuePrereq nil|string Id of a prerequisite imbuement that must already be applied.

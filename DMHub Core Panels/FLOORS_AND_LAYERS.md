@@ -107,17 +107,13 @@ For each file path, the C# engine:
 
 2. **Creates the map**: `game.CreateMap{description=name, groundLevel=#floors, floors=floors}`
 
-3. **Sets dimensions** centered on origin (0,0):
-   ```lua
-   map.dimensions = {
-       x1 = -ceil(w/2) + 1,   -- e.g., w=20 -> x1=-9
-       y1 = -ceil(h/2) + 1,   -- e.g., h=18 -> y1=-8
-       x2 = ceil(w/2) - 1,    -- x2=9
-       y2 = ceil(h/2),         -- y2=9
-   }
-   ```
+3. **Sets provisional dimensions** of the right size, centered on origin, used only while the images load.
 
 4. **Spawns map objects** via `ImportMapToFloorCo` for each floor
+
+5. **Fits the bounds to the images** with `mod.shared.FitMapBoundsToImagesCo`, which polls the engine's `map:FitDimensionsToMapImages()` until every map image is placed. The engine measures each placed image (`ObjectComponentMap.TryGetImageCellBounds`) and takes the cells whose centers lie on it, for squares and hexes. Reimport and add-floor (the latter with `expandOnly`) use the same helper.
+
+   **Never compute map bounds from the image's width in tiles.** Where the image sits relative to its object position depends on which cell the renderer's pivot wrap picks. For a near-fit (e.g. 16.03 tiles, from slightly-off control points) that is the other cell from the one a width-based formula assumes, and the bounds land a full tile off the image.
 
 ### Step 5: Map Object Spawned (ImportMapToFloorCo)
 
