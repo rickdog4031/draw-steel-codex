@@ -9,6 +9,21 @@ local g_showDirectorWelcome = setting{
     section = "Game",
 }
 
+--Which module cover document THIS game has already opened. The cover fallback
+--below is a first-start welcome, not a per-session one, and nothing remembered
+--that it had fired -- so a director with an adventure module installed got its
+--welcome page reopened on every single entry, in every campaign, with no way to
+--stop it. Per-game rather than global: installing the same module in a new
+--campaign should still get its welcome once.
+--
+--No description/editor/section on purpose: this is bookkeeping, not something
+--anybody should meet in the Game panel (same shape as glossaryhints:toastseen).
+local g_shownCoverDocument = setting{
+    id = "showncoverdocument",
+    default = "",
+    storage = "pergamepreference",
+}
+
 -- Returns the document id of an installed module's "Cover Document" (set when
 -- the module was published via ModShare's Cover Document dropdown), or nil if
 -- no loaded module has one whose document is present. Used as the director's
@@ -115,8 +130,18 @@ dmhub.RegisterEventHandler("EnterGame", function()
         -- cover document, if one was set when the module was published. Lets a
         -- campaign module show a director welcome on start without the director
         -- registering an adventure document by hand.
+        --
+        -- ONCE per game, though: this is a welcome, and reopening it on every entry
+        -- is what "I keep getting the welcome to the delian tomb message and have no
+        -- idea how to make it stop" is describing. Only the cover fallback is gated;
+        -- the adventure-document branch above is the director's explicit
+        -- /setadventuredocument choice and keeps opening each session as before.
         if docid == nil then
-            docid = GetModuleCoverDocumentId()
+            local coverid = GetModuleCoverDocumentId()
+            if coverid ~= nil and g_shownCoverDocument:Get() ~= coverid then
+                g_shownCoverDocument:Set(coverid)
+                docid = coverid
+            end
         end
 
         if docid ~= nil then

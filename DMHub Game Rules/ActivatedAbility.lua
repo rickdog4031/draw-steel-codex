@@ -2375,6 +2375,9 @@ function ActivatedAbility:ConsumeResources(casterToken, options)
                             dmhub.SetAndUploadTableItem(equipment.tableName, itemInfo)
                         else
                             tok.properties:GiveItem(k,-quantity)
+                            if itemInfo ~= nil and EquipmentCategory.IsConsumable(itemInfo) then
+                                tok.properties:QueueLoseItemAnimation(k)
+                            end
                         end
                     end
                 end
@@ -3111,7 +3114,36 @@ local g_lastDeferredStallLog = 0
 --a real cast is still resolving -- the exact thing the deferral exists to
 --prevent -- so the deadline is deliberately generous rather than tight: a
 --slightly out-of-order prompt beats losing every trigger for the session.
+--The clock is idle time, not age: a long cast the player is still working
+--through (Explosive Parade moving each minion) must not be abandoned.
 local DEFERRED_CAST_ABANDON_SECONDS = 30
+
+--Last time a sweep saw a prompt or roll dialog open. The player is busy with a
+--cast then, so the watchdog counts it as activity.
+local g_lastPlayerResolvingCast = 0
+
+--- Records that the running cast just moved forward, so the deferred-action
+--- watchdog knows it is not stuck. Safe to call outside a cast.
+function ActivatedAbility.MarkCastProgress()
+    local info = ActivatedAbility.CurrentCastInfo()
+    if info ~= nil then
+        info.lastProgress = dmhub.Time()
+    end
+end
+
+--A prompt or roll dialog on screen means a cast is waiting on the player, not stuck.
+local function PlayerIsResolvingCast()
+    if gamehud == nil then
+        return false
+    end
+    if gamehud.rollDialog ~= nil and gamehud.rollDialog.valid and gamehud.rollDialog.data.IsShown() then
+        return true
+    end
+    if gamehud.actionBarPanel ~= nil and gamehud.actionBarPanel.valid and gamehud.actionBarPanel.data.IsCastingSpell() then
+        return true
+    end
+    return false
+end
 
 local function ScheduleDeferredCastSweep()
     --backstop in case a cast coroutine dies without its atexit running.
@@ -3169,19 +3201,25 @@ function ActivatedAbility.FlushCastCompleteActions()
     --cast unwinds through FinishCast at its next behavior boundary if it ever
     --does wake up.
     local abandonNow = dmhub.Time()
+    if PlayerIsResolvingCast() then
+        g_lastPlayerResolvingCast = abandonNow
+    end
     for _,entry in ipairs(g_deferredCastCompleteActions) do
         if entry.time ~= nil and abandonNow - entry.time > DEFERRED_CAST_ABANDON_SECONDS then
             for co,_ in pairs(entry.casts) do
                 local info = ActivatedAbility.coroutineStorage[co]
-                if info ~= nil and coroutine.status(co) ~= "dead" then
+                --Only a cast with no sign of life for the whole window is stuck. Signs of life
+                --are the trigger queuing, the cast advancing, or a prompt being open.
+                local lastActivity = math.max(entry.time, info ~= nil and info.lastProgress or 0, g_lastPlayerResolvingCast)
+                if info ~= nil and coroutine.status(co) ~= "dead" and abandonNow - lastActivity > DEFERRED_CAST_ABANDON_SECONDS then
                     local age = "?"
                     if info.startTime ~= nil then
                         age = string.format("%d", math.floor(abandonNow - info.startTime))
                     end
-                    printf("CASTSTALL:: abandoning stalled cast %s (caster=%s age=%ss) after it blocked a deferred action for %ds",
+                    printf("CASTSTALL:: abandoning stalled cast %s (caster=%s age=%ss idle=%ds) after it blocked a deferred action for %ds",
                         tostring(info.ability ~= nil and info.ability.name or "?"),
                         tostring(info.casterToken ~= nil and info.casterToken.valid and info.casterToken.name or "?"),
-                        age, math.floor(abandonNow - entry.time))
+                        age, math.floor(abandonNow - lastActivity), math.floor(abandonNow - entry.time))
                     ActivatedAbility.coroutineStorage[co] = nil
                     if info.options ~= nil then
                         info.options.abort = true
@@ -3435,6 +3473,7 @@ function ActivatedAbility.CastCoroutine(self, casterToken, targets, options)
 	options.targets = targets
 
 	for i,behavior in ipairs(self.behaviors) do
+		ActivatedAbility.MarkCastProgress()
 		print("CastCoroutine::", self.name, "behavior " .. i .. "/" .. #self.behaviors .. " type=" .. tostring(behavior.typeName) .. " instant=" .. tostring(behavior.instant) .. " filtered=" .. tostring(behavior:IsFiltered(self, casterToken, options)) .. " abort=" .. tostring(options.abort) .. " stopProcessing=" .. tostring(options.stopProcessing))
 		if not behavior.instant and behavior.hasCast and (not behavior:IsFiltered(self, casterToken, options)) then
             if behavior.typeName == "ActivatedAbilityPowerRollBehavior" then

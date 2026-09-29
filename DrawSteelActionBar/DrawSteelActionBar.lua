@@ -8565,7 +8565,7 @@ local function AddModifierLabelsToMarker(markers, sourceToken, targetToken, abil
 
     local pierceWalls = originToken.properties:GetPierceWalls()
     if originToken:GetLineOfSight(targetToken, pierceWalls) == 0 then
-        markers:AddLabel("No Line of Sight", "forbidden")
+        markers:AddLabel("No Line of Effect", "forbidden")
         return
     end
 
@@ -11199,9 +11199,13 @@ CreateAbilityController = function()
 
             --A scripted invoke can preselect every target and still require the player
             --to accept an optional rider. Leave that cast on Confirm/Skip so declining
-            --does not resolve the effect or spend its resource cost.
+            --does not resolve the effect or spend its resource cost. An invoked
+            --multi-mode ability waits the same way so the player can pick the mode.
+            local awaitsModeChoice = g_currentAbility ~= nil and g_currentSymbols.invoked
+                and g_currentAbility.multipleModes and #g_currentAbility:try_get("modeList", {}) > 1
             if g_currentAbility ~= nil and g_currentAbility.castImmediately
                 and g_currentAbility:try_get("promptOverride") == nil
+                and (not awaitsModeChoice)
                 and (not g_castButton:HasClass("collapsed")) then
                 g_castButton:FireEvent("press")
             end
@@ -11414,6 +11418,15 @@ CreateAbilityController = function()
             --all-inclusive filter but fail a "reasoned" filter. These targets
             --stay visible (with a tooltip) but cannot be chosen by players.
             local reasons = options.reasons or {}
+
+            --retarget prompts with exactly one legal choice resolve without asking.
+            if options.autoPickSole then
+                local sole = RuleUtils.SoleRetargetCandidate(options.targets, reasons)
+                if sole ~= nil then
+                    options.choose(sole)
+                    return
+                end
+            end
 
             -- _tmp_aicontrol is a counter (incremented while AI is in control),
             -- so the falsy/truthy check must be against `> 0` -- a plain truthy
@@ -13834,7 +13847,12 @@ CalculateSpellTargeting = function(forceCast, initialSetup)
         -- requiring an extra Confirm after an explicit click just adds friction (e.g. the
         -- one-creature picks invoked per wall square by manipulate_targets). An explicit
         -- Confirm click (forceCast = true) always goes through regardless.
-        local hasPromptOverride = g_currentAbility:try_get("promptOverride") ~= nil and not g_manualTargetChosen
+        --An invoked multi-mode ability (e.g. a summoned minion's damage type choice) waits
+        --the same way, or it would fire in mode 1 before the player can pick.
+        local awaitsModeChoice = g_currentSymbols.invoked and g_currentAbility.multipleModes
+            and #g_currentAbility:try_get("modeList", {}) > 1
+        local hasPromptOverride = (g_currentAbility:try_get("promptOverride") ~= nil or awaitsModeChoice)
+            and not g_manualTargetChosen
         if forceCast or ((not g_currentAbility:CanSelectMoreTargets(g_token, targets, g_currentSymbols)) and not hasPromptOverride) then --temporarily disabled -David -- and not initialSetup then
             --we can't select more targets, so cast the spell in here.
             g_token.lookAtMouse = false

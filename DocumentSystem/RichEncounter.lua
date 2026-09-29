@@ -488,6 +488,10 @@ function RichEncounter.CreateDisplay(self)
             element:FireEvent("refreshTag")
         end,
         refreshTag = function(element)
+            --drawSteelButton starts collapsed, and collapsed panels never
+            --think, so drive its visibility from here.
+            drawSteelButton:FireEvent("refreshTag")
+
             local canspawn = EncounterHasRecordedSetup()
 
             local children = element.children

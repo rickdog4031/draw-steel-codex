@@ -4300,7 +4300,9 @@ function ActivatedAbility:PromptText(casterToken, targets, symbols, synthesizedS
         end
     end
 
-    if numTargets == 1 and #targets == 0 then
+    --Every target is already picked. Only a held invoke (e.g. waiting on a mode
+    --choice) shows this state; "Choose Target 2/1" would ask for one too many.
+    if (numTargets == 1 and #targets == 0) or #targets >= numTargets then
         return nil
     end
 

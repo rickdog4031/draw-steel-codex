@@ -1193,6 +1193,63 @@ function CustomDocument:CreateInterface(args)
     local AUTOSAVE_IDLE_DELAY = 15
     local AUTOSAVE_MAX_DELAY = 60
 
+    -- A delta is only meaningful while the server still holds the baseline it was
+    -- computed against. Every in-place control (bar +/-, checkbox, counter, macro strike,
+    -- spoiler link, power-roll preset) uploads the WHOLE item out of band, and refreshGame
+    -- deliberately does not refresh us while we are editing -- so the document can move
+    -- under an open editor without data.original ever hearing about it. A delta computed
+    -- from the stale baseline then writes TextStorage shard keys derived from text the
+    -- server no longer holds. Usually the two sides touched different shards and it
+    -- composes; when they touched the SAME shard the other write is silently overwritten
+    -- and the resulting shard map is consistent only by luck.
+    --
+    -- True when the server has moved since our baseline AND our own edit overlaps what
+    -- moved there, i.e. when a delta must not be trusted.
+    local function DeltaBaselineStale()
+        local baseline = resultPanel.data.original
+        local baseId = resultPanel.data.originalUpdateId
+        if baseline == nil or baseId == nil then
+            return false
+        end
+
+        local live = (dmhub.GetTable(CustomDocument.tableName) or {})[self.id]
+        if live == nil or live.updateid == baseId or live.updateid == resultPanel.data.pendingUpload then
+            --unmoved, or moved only by our own save still awaiting its echo.
+            return false
+        end
+
+        local function sections(doc)
+            if doc == nil then
+                return nil
+            end
+            local ts = doc.textStorage
+            if ts == nil then
+                return nil
+            end
+            return ts.sections
+        end
+
+        local base, srv, mine = sections(baseline), sections(live), sections(self)
+        if base == nil or srv == nil or mine == nil then
+            --unsharded, or a shape we cannot compare: a moved server is enough on its own.
+            return true
+        end
+
+        for k, v in pairs(mine) do
+            if base[k] ~= v and srv[k] ~= base[k] then
+                --we rewrote a shard that the other write also changed.
+                return true
+            end
+        end
+        for k, v in pairs(base) do
+            if mine[k] == nil and srv[k] ~= v then
+                --we dropped a shard that the other write had changed.
+                return true
+            end
+        end
+        return false
+    end
+
     -- Issue a save and arm the confirmation watchdog. fullWrite=true forces a complete
     -- document upload with no delta baseline (used for the retry); otherwise the upload is
     -- a delta against the last server-confirmed baseline (data.original). Returns true if
@@ -1204,6 +1261,20 @@ function CustomDocument:CreateInterface(args)
         if not fullWrite and dmhub.DeepEqual(self, resultPanel.data.original) then
             --nothing changed since the confirmed baseline; nothing to upload.
             return false
+        end
+
+        if not fullWrite and DeltaBaselineStale() then
+            --Send the whole document instead. That loses the other client's overlapping
+            --change -- a single click to redo -- but leaves the document internally
+            --consistent, which a delta against a baseline the server no longer holds
+            --cannot promise. Logged rather than silent: this is the shape of "the
+            --journal ate my text" reports, and it has to be visible in recentErrors to
+            --be diagnosable at all.
+            local live = (dmhub.GetTable(CustomDocument.tableName) or {})[self.id] or {}
+            dmhub.Debug(string.format(
+                "JOURNAL_SAVE:: document '%s' moved under an open editor (baseline updateid %s, server now %s); writing the whole document instead of a delta.",
+                tostring(self.id), tostring(resultPanel.data.originalUpdateId), tostring(live.updateid)))
+            fullWrite = true
         end
 
         local deltaFrom = nil
@@ -1265,7 +1336,25 @@ function CustomDocument:CreateInterface(args)
                 else
                     --make it so just closing out of present mode doesn't close the dialog for us.
                     element.parent.data.persistAfterPresentation = true
-                    GameHud.PresentDialogToUsers(element.parent, "document", { docid = self.id })
+
+                    --A docid alone is only resolvable if the document is IN the
+                    --documents table. Item and treasure cards opened from a link are
+                    --transient MarkdownDocuments built by equipment:RenderToMarkdown
+                    --with a generated guid and deliberately never stored, so every
+                    --other client's lookup missed and the player got no window and no
+                    --error -- "the Present to Players button when giving out loot
+                    --doesn't seem to do anything". Carry the content for those.
+                    local stored = (dmhub.GetTable(CustomDocument.tableName) or {})[self.id]
+                    if stored == nil then
+                        GameHud.PresentDialogToUsers(element.parent, "document", {
+                            docid = self.id,
+                            transientContent = self:try_get("content"),
+                            transientDescription = self.description,
+                            transientDocType = self:try_get("docType"),
+                        })
+                    else
+                        GameHud.PresentDialogToUsers(element.parent, "document", { docid = self.id })
+                    end
                 end
             end,
             destroy = function(element)
@@ -1315,10 +1404,21 @@ function CustomDocument:CreateInterface(args)
                 if IsEditing() then
                     resultPanel:FireEventTree("savedoc")
                     if not dmhub.DeepEqual(self, resultPanel.data.original) then
-                        self:Upload(resultPanel.data.original)
+                        --This path saves without going through BeginSaveAttempt, so it
+                        --needs the same guard: a delta is worthless once the server no
+                        --longer holds the baseline it was computed against.
+                        if DeltaBaselineStale() then
+                            self:Upload()
+                        else
+                            self:Upload(resultPanel.data.original)
+                        end
                     end
                 else
                     resultPanel.data.original = DeepCopy(self)
+                    --the revision this baseline IS. DeltaBaselineStale compares the
+                    --server against it to tell "nobody else has touched this" from
+                    --"the baseline is fiction now".
+                    resultPanel.data.originalUpdateId = self.updateid
                     resultPanel.data.pendingOriginal = nil
                     resultPanel.data.pendingUpload = nil
                 end
@@ -1423,7 +1523,10 @@ function CustomDocument:CreateInterface(args)
             gui.Tooltip(string.format("Decrease Font Size (Currently %d%%)", round(dmhub.GetSettingValue("journal:fontsize"))))(element)
         end,
         press = function(element)
-            if dmhub.GetSettingValue("journal:fontsize") <= 20 then
+            --50, matching the Settings slider's own minimum. The old floor of 20
+            --let the toolbar reach math.floor(16*0.2) = a 3px font, which is not a
+            --setting anybody wants and looks like the journal has broken.
+            if dmhub.GetSettingValue("journal:fontsize") <= 50 then
                 return
             end
             dmhub.SetSettingValue("journal:fontsize", dmhub.GetSettingValue("journal:fontsize") - 20)
@@ -2053,6 +2156,23 @@ function CustomDocument:CreateInterface(args)
             local children = element.children
             children[#children] = newReadPanel
             element.children = children
+
+            --The edit surface reads the scale through CustomDocument.ScaleFontSize
+            --when it is built, and this handler only ever replaced the read panel --
+            --so an editor built before the setting changed kept its old size for
+            --good, and a Director on 200% found the editor still rendering at 100%.
+            --Drop the cached write panel so the next entry into edit mode builds it
+            --at the current scale.
+            --
+            --Only while it is NOT open: unsaved text, caret, selection, decorations
+            --and find state all live in that panel, and none of that is worth a
+            --font size. Changing the zoom mid-edit therefore still needs a toggle
+            --out and back; making it land live means re-applying every
+            --ScaleFontSize-derived size in the edit surface, which is a bigger job.
+            if writePanel ~= nil and writePanel.valid and writePanel:HasClass("collapsed") then
+                writePanel:DestroySelf()
+                writePanel = nil
+            end
         end,
     }
 
@@ -2094,6 +2214,8 @@ function CustomDocument:CreateInterface(args)
                     --reaching here means the write really landed server-side.
                     if resultPanel.data.pendingOriginal ~= nil then
                         resultPanel.data.original = resultPanel.data.pendingOriginal
+                        --the echo we just matched IS this baseline's revision.
+                        resultPanel.data.originalUpdateId = doc.updateid
                         resultPanel.data.pendingOriginal = nil
                     end
                     resultPanel.data.pendingUpload = nil
@@ -2465,6 +2587,14 @@ local function CreateTabButton(doc, tabbedViewer, tabId, bubbleIcon)
         classes = {"multiselectChipRemove"},
         hidden = 0,
         press = function(element)
+            --Double-clicking the X to close several tabs quickly used to roll the
+            --window up as well: this panel cannot swallowPress without costing the
+            --tab strip its role as the window's drag handle, so the pointer-down
+            --reaches the tab button and the strip, each of which detects the
+            --double-click independently and fires toggleShade. Claim that shade
+            --instead, the way the rail window's chips already do. 0.5s is the
+            --engine's double-click window (the rail uses 0.3 for the same trick).
+            tabbedViewer.data.suppressShadeUntil = dmhub.Time() + 0.5
             tabbedViewer:FireEvent("closeTab", tabButton.data.tabId)
         end,
         gui.Label {
@@ -3129,9 +3259,24 @@ function CustomDocument.GetOrCreateTabbedViewer()
         },
         monitorAssets = { "documents", "objecttables" },
 
+        --Every save of a journal document writes the documents table, which lands
+        --here. Marking the tree dirty and rebuilding it threw away the user's
+        --expanded folders and popped Shared Documents / Templates open again --
+        --on every save, while they were working.
+        --
+        --Nothing needs rebuilding: refreshTree frames the real journal panel, which
+        --carries its own monitorAssets and refreshes its rows in place (see the note
+        --there). So only mark dirty when the rail cannot see the change itself,
+        --i.e. while it is collapsed and receiving nothing.
         refreshAssets = function(element)
-            element.data.treeDirty = true
-            element:FireEvent("refreshTree")
+            if element:HasClass("collapsed") then
+                element.data.treeDirty = true
+                return
+            end
+            --a rail that somehow has no tree still needs its first build.
+            if #treeRailScroll.children == 0 then
+                element:FireEvent("refreshTree")
+            end
         end,
 
         --fired tree-wide by the viewer after every tab switch and every
@@ -3228,6 +3373,20 @@ function CustomDocument.GetOrCreateTabbedViewer()
         flow = "horizontal",
         halign = "left",
         valign = "top",
+
+        --window-shade, the backstop: hide the whole body in ONE place rather than
+        --relying on every document interface to hide itself. The interfaces built
+        --here have their own journalShade handlers, but a document type supplied by
+        --a module has none, and without this its content paints unclipped outside
+        --the rolled-up window -- over the tab strip and the map -- because
+        --updateShadeHeight only shrinks the window, it does not remove the body
+        --from layout. Collapsing the row also makes the shaded height honest
+        --instead of forced. The rail keeps its own handler: it has to restore the
+        --user's pin preference on unshade, which this cannot know.
+        journalShade = function(element, shaded)
+            element:SetClass("collapsed", shaded)
+        end,
+
         treeRail,
         contentArea,
     }
@@ -3581,11 +3740,41 @@ function CustomDocument.GetOrCreateTabbedViewer()
             element.selfStyle.height = h
         end,
 
+        --The user closed the popped-out OS window. This is the ONE close path that
+        --does not run through closetab, so the unsaved-changes guard never sees it and
+        --anything typed since the last autosave was simply gone -- the form editors
+        --(montage, heroic test, negotiation) write straight into the document object
+        --and rely on the shell to upload, so up to AUTOSAVE_IDLE_DELAY seconds of a
+        --Director's work sat only in memory.
+        --
+        --The engine fires this synchronously on the window's sheet before it destroys
+        --the canvas (NativeWindowManager.cs, the CloseWindow branch), and only for a
+        --user-initiated close -- pop-in, Lua reload and app exit do not come here --
+        --so it is both the last moment the panels are alive and the right moment to
+        --act. Save rather than prompt: a modal raised inside a window that is being
+        --torn down cannot be answered.
+        --
+        --saveDocument is BeginSaveAttempt, which no-ops when the document has not
+        --diverged from its baseline, so firing it at every realized tab costs nothing
+        --for the tabs nobody edited. Unrealized tabs have no panel and no edits.
+        nativeWindowClosed = function(element)
+            for _, tab in ipairs(element.data.tabs or {}) do
+                if tab.contentPanel ~= nil and tab.contentPanel.valid then
+                    tab.contentPanel:FireEvent("saveDocument")
+                end
+            end
+        end,
+
         --window-shade: roll the window up so only the tab strip remains,
         --or roll it back down. Toggled by double-clicking the tab strip.
         toggleShade = function(element)
             --shading would shrink the panel out from under its OS window.
             if element.data.poppedOut then
+                return
+            end
+            --a tab's X claimed this double-click (see the chip's press handler):
+            --closing tabs quickly must never roll the window up.
+            if element.data.suppressShadeUntil ~= nil and dmhub.Time() < element.data.suppressShadeUntil then
                 return
             end
             --the engine can deliver a double-click to several overlapping
@@ -3738,6 +3927,11 @@ function CustomDocument.GetOrCreateTabbedViewer()
                     tab.contentPanel:SetClass("collapsed", tab.tabId ~= tabId)
                 end
                 tab.tabButton:SetClass("selected", tab.tabId == tabId)
+            end
+            --the pass above un-collapses the new tab's content, which while the
+            --window is rolled up would paint outside the shaded strip.
+            if element.data.shaded then
+                element:FireEventTree("journalShade", true)
             end
             refreshTabVisibility(element)
             syncNavState(element)
@@ -4328,6 +4522,23 @@ GameHud.RegisterPresentableDialog {
     id = "document",
     create = function(args)
         local doc = (dmhub.GetTable(CustomDocument.tableName) or {})[args.docid]
+        if doc == nil and type(args.transientContent) == "string" then
+            --A document that was never stored -- an item or treasure card rendered
+            --on the fly. The presenter sent its content along precisely because a
+            --docid cannot be resolved for it; rebuild it locally, read-only.
+            --NOTE: the source card's annotations are not carried, so its item-icon
+            --annotation (the "image:main" tag) renders empty here and the player
+            --sees the text of the card. Sending { srcTable, srcId } and re-rendering
+            --on this side would keep the icon, and is the better fix if that matters.
+            doc = MarkdownDocument.new{
+                id = args.docid,
+                description = args.transientDescription or "",
+                content = args.transientContent,
+                annotations = {},
+                docType = args.transientDocType,
+                readonly = true,
+            }
+        end
         if doc == nil then
             return nil
         end
@@ -4371,7 +4582,8 @@ GameHud.RegisterPresentableDialog {
 -- survives close and reopen within the session.
 ----------------------------------------------------------------------
 
-RegisterGameType("PanelDocument", "CustomDocument")
+--- @class PanelDocument: CustomDocument
+PanelDocument = RegisterGameType("PanelDocument", "CustomDocument")
 PanelDocument.nodeType = "panel"
 PanelDocument.docType = "note"
 PanelDocument.panelName = ""
@@ -4799,7 +5011,8 @@ end
 -- supplies a synthetic registration instead of looking one up.
 ----------------------------------------------------------------------
 
-RegisterGameType("CharacterPanelDocument", "PanelDocument")
+--- @class CharacterPanelDocument: PanelDocument
+CharacterPanelDocument = RegisterGameType("CharacterPanelDocument", "PanelDocument")
 CharacterPanelDocument.charid = ""
 CharacterPanelDocument.DefaultWidth = 400
 CharacterPanelDocument.DefaultHeight = 640
@@ -14789,6 +15002,7 @@ RailScriptButtonDialog = function(toolkitid, idx)
         height = 26,
         valign = "center",
         change = function(element)
+            ---@cast element Dropdown
             m_mode = element.idChosen
             codeSection:SetClass("collapsed", m_mode ~= "script")
             commandSection:SetClass("collapsed", m_mode ~= "command")
@@ -16044,6 +16258,7 @@ local function RailShowCommunityBrowser(side, opts)
                 valign = "center",
                 rmargin = 32,
                 change = function(dropdownElement)
+                    ---@cast dropdownElement Dropdown
                     m_sort = dropdownElement.idChosen or "hearts"
                     RenderCards()
                 end,

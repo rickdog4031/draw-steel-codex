@@ -1,6 +1,7 @@
 local mod = dmhub.GetModLoading()
 
-RegisterGameType("CommandDocument", "CustomDocument")
+--- @class CommandDocument: CustomDocument
+CommandDocument = RegisterGameType("CommandDocument", "CustomDocument")
 CommandDocument.command = ""
 
 function CommandDocument:ShowDocument()
@@ -13,7 +14,8 @@ function CommandDocument:ShowDocument()
 	LaunchablePanel.GetOrLaunchPanel(self.command)
 end
 
-RegisterGameType("MonsterReferenceDocument", "CustomDocument")
+--- @class MonsterReferenceDocument: CustomDocument
+MonsterReferenceDocument = RegisterGameType("MonsterReferenceDocument", "CustomDocument")
 MonsterReferenceDocument.monsterid = ""
 
 function MonsterReferenceDocument:Render()
@@ -27,7 +29,8 @@ end
 function MonsterReferenceDocument:ShowDocument()
 end
 
-RegisterGameType("PDFDeepLink", "CustomDocument")
+--- @class PDFDeepLink: CustomDocument
+PDFDeepLink = RegisterGameType("PDFDeepLink", "CustomDocument")
 PDFDeepLink.docid = ""
 PDFDeepLink.page = "C"
 
@@ -49,7 +52,8 @@ function PDFDeepLink:PreviewDescription()
     end
 end
 
-RegisterGameType("MapDocument", "CustomDocument")
+--- @class MapDocument: CustomDocument
+MapDocument = RegisterGameType("MapDocument", "CustomDocument")
 MapDocument.mapid = ""
 MapDocument.nodeType = "map"
 
@@ -86,7 +90,8 @@ end
 --camera on the bubble (on engine builds that support loc-based camera
 --moves), and opens the bubble's info dialog - the same one clicking the
 --bubble on the map shows.
-RegisterGameType("BubbleDocument", "CustomDocument")
+--- @class BubbleDocument: CustomDocument
+BubbleDocument = RegisterGameType("BubbleDocument", "CustomDocument")
 BubbleDocument.mapid = ""      --"" = the current map
 BubbleDocument.bubblename = "" --matched against bubble icon and description
 BubbleDocument.nodeType = "bubble"
@@ -184,12 +189,21 @@ end
 --[:...] page embed shows), so mousing over the link reads the room info
 --without going anywhere. Falls back to PreviewDescription when the bubble
 --is on another map (not enumerable from here) or carries no document.
+--The starting depth deliberately bounds nesting inside a hover card more tightly
+--than a full journal page, but 2 bounded it to NOTHING: CreateEmbeddablePanel
+--refuses at >= 3 and adds 1 for the panel it builds, so the page rendered here
+--began life at 3 and every embed on it came back "(Too Deeply Nested)" -- while
+--the very same embed worked when the page was opened from the journal, which
+--starts at 0. That asymmetry is what reporters hit and could not explain
+--("sometimes it works"; "it was because I was in the Map Journal instead of the
+--original Journal"). 1 leaves room for one embed inside the previewed page and
+--still stops a hover card nesting as deeply as a journal page can.
 function BubbleDocument:Render(args)
     local doc = self:GetMarkdownDocument()
     if doc == nil then
         return nil
     end
-    return CustomDocument.CreateEmbeddablePanel(doc, { embedDepth = 2 })
+    return CustomDocument.CreateEmbeddablePanel(doc, { embedDepth = 1 })
 end
 
 function BubbleDocument:PreviewDescription()
@@ -277,25 +291,56 @@ function CustomDocument.CreateEmbeddablePanel(content, args)
                 }
             end
 
+            local embedDoc = content
+            local embedPanel = content:DisplayPanel{
+                height = "auto",
+                vscroll = false,
+                hpad = 0,
+                hmargin = 0,
+                embedDepth = (args.embedDepth or 0) + 1,
+                hostPageColor = args.hostPageColor,
+            }
+
             return gui.Panel{
                 width = "100%",
                 height = "auto",
                 valign = "top",
                 margin = 0,
                 pad = 0,
-                content:DisplayPanel{
-                    height = "auto",
-                    vscroll = false,
-                    hpad = 0,
-                    hmargin = 0,
-                    embedDepth = (args.embedDepth or 0) + 1,
-                    hostPageColor = args.hostPageColor,
-                },
+
+                --Seeded from the document as it was embedded, so the host's first
+                --refreshGame does not re-render an embed that has not changed.
+                data = { embedUpdateId = embedDoc.updateid },
+
+                embedPanel,
+
                 savedoc = function(element)
                     element:HaltEventPropagation()
                 end,
+
+                --The host's refreshDocument carries the HOST's document, and
+                --MarkdownDocument.DisplayPanel's handler does `self = doc` -- letting it
+                --through would render the host's text inside the embed. But halting alone
+                --cut the embed off from every refresh, leaving it stale (and its rich tags
+                --without a refreshTag) until the host was reopened. Halt, then re-dispatch
+                --a refresh carrying the embedded document instead.
                 refreshDocument = function(element)
                     element:HaltEventPropagation()
+
+                    --Re-read by id: a cloud update replaces the table row, so the object
+                    --captured when the embed was built can be stale. Falls back to it if
+                    --the row is gone (document deleted while the host is open).
+                    local fresh = (dmhub.GetTable(CustomDocument.tableName) or {})[embedDoc.id] or embedDoc
+
+                    --Upload() stamps a new updateid on every save, so this re-renders
+                    --only on a real change -- refreshGame fires far more often than embeds
+                    --change, and a host can hold several of them.
+                    if element.data.embedUpdateId == fresh.updateid then
+                        return
+                    end
+
+                    element.data.embedUpdateId = fresh.updateid
+                    embedPanel:FireEventTree("refreshDocument", fresh)
                 end,
                 editDocument = function(element)
                     element:HaltEventPropagation()
@@ -760,7 +805,8 @@ function CustomDocument.OpenContent(node)
     end
 end
 
-RegisterGameType("CustomDocumentRef")
+--- @class CustomDocumentRef: GameType
+CustomDocumentRef = RegisterGameType("CustomDocumentRef")
 
 CustomDocumentRef.docid = ""
 

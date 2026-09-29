@@ -11,6 +11,18 @@ local mod = dmhub.GetModLoading()
 --- @field triggerFilter nil|string GoblinScript formula that must be truthy for the trigger to fire.
 TriggeredAbility = RegisterGameType("TriggeredAbility", "ActivatedAbility")
 
+--How many triggered abilities have got past their gates and fired or prompted.
+--creature:TriggerEvent compares it before and after evaluating an event to tell
+--whether anything fired at all (CharacterModifier:TriggerEvent returns true even
+--when the trigger's condition then fails). Kept in a local, not a field: reading
+--an unset field on a game type raises.
+local g_triggersFiredCount = 0
+
+--- @return integer
+function TriggeredAbility.FiredCount()
+    return g_triggersFiredCount
+end
+
 TriggeredAbility.categorization = "Triggered Ability"
 TriggeredAbility.despawnBehavior = "remove"
 TriggeredAbility.DespawnBehaviors = {
@@ -1408,6 +1420,9 @@ function TriggeredAbility:Trigger(characterModifier, creature, symbols, auraCont
 		}
 	end
 
+    --Past every gate: this trigger fires or prompts. See TriggeredAbility.FiredCount.
+    g_triggersFiredCount = g_triggersFiredCount + 1
+
     if argOptions.debugLog then
         argOptions.debugLog[#argOptions.debugLog+1] = {
             name = self.name,
@@ -1754,6 +1769,11 @@ function TriggeredAbility:Trigger(characterModifier, creature, symbols, auraCont
             --that somehow survives the cleanup below is orphaned.
             g_liveTriggerWatchers[guid] = nil
 
+			--A prompt that was shown and then ended without an answer (turn passed,
+			--aged out, condition or cost lost) counts as declined. A nil exitReason
+			--means it was folded into an identical card, which still owns the choice.
+			local expiredUnanswered = exitReason ~= nil and exitReason ~= "caster token invalid"
+
 			--One line per prompt lifetime saying how it ended, so a prompt that
 			--vanished can be explained from the log.
 			if trigger ~= nil and trigger.triggered then
@@ -1784,7 +1804,9 @@ function TriggeredAbility:Trigger(characterModifier, creature, symbols, auraCont
 			end
 
 			local accepted = trigger ~= nil and trigger.triggered
-			local dismissed = (not accepted) and (wasDismissed or (trigger ~= nil and trigger.dismissed))
+			--Expiry must run On Dismiss behaviors too: death-rule overrides like Pixie
+			--Dust rely on them to remove the minion, which is otherwise stranded (BE8P56UV).
+			local dismissed = (not accepted) and (wasDismissed or expiredUnanswered or (trigger ~= nil and trigger.dismissed))
 			--A dismissed trigger only runs the cast pipeline when the ability
 			--actually has On Dismiss behaviors to execute. Without them,
 			--dismissing is a pure no-op: no cost, no chat message, no events.
@@ -1886,6 +1908,16 @@ local function CompleteAIReactionFromOptions(casterToken, argOptions)
 	end
 end
 
+--A trigger fired by a DispatchEventAndWait event has finished (or been
+--dismissed with On Dismiss behaviors): release the wait, which may be on
+--another machine. See creature:AckEventWait.
+local function AckEventWaitFromSymbols(casterToken, symbols)
+	if casterToken ~= nil and casterToken.valid and casterToken.properties ~= nil
+		and type(symbols) == "table" and rawget(symbols, "eventwaitid") ~= nil then
+		casterToken.properties:AckEventWait(symbols)
+	end
+end
+
 function TriggeredAbility:ExecuteTriggerCast(args)
 	local argOptions = args.argOptions or {}
 	if type(argOptions.aiActivityId) == "string" and type(argOptions.aiReactionId) == "string"
@@ -1927,6 +1959,7 @@ function TriggeredAbility:ExecuteTriggerCast(args)
 			handler(self, casterToken, options)
 		end
 		CompleteAIReactionFromOptions(casterToken, argOptions)
+		AckEventWaitFromSymbols(casterToken, symbols)
 
 		return
 	end
@@ -2353,6 +2386,7 @@ function TriggeredAbility:TriggerCo(targets, characterModifier, casterToken, cre
                     argOptions.complete()
                 end
 				CompleteAIReactionFromOptions(casterToken, argOptions)
+				AckEventWaitFromSymbols(casterToken, symbols)
             end,
         },
 	}
