@@ -1063,6 +1063,39 @@ Commands.RegisterMacro{
     end,
 }
 
+--Plays a ParticleEffects recipe on one token for a few seconds. The token is given as the
+--number a GoblinScript {Id} produces (or its raw charid), so an ability Macro behavior can aim
+--it at "whoever this fires on": /broadcast tokenfx {Id} pillar-of-holy-fire 3
+Commands.RegisterMacro{
+    name = "tokenfx",
+    summary = "play a particle effect on a token for a few seconds",
+    doc = "Usage: /tokenfx <token id> <particle recipe id> [seconds]\nPlays the effect on this client only. Use /broadcast to send to other players.",
+    command = function(str)
+        local args = Commands.SplitArgs(str)
+        local want = args[1]
+        local recipeid = args[2]
+        local seconds = tonumber(args[3]) or 3
+        if want == nil or recipeid == nil then
+            print("USAGE: /tokenfx <token id> <recipe id> [seconds]")
+            return
+        end
+
+        for _,token in ipairs(dmhub.allTokens) do
+            if token.valid and token.charid ~= nil and token.canSee
+                and (token.charid == want or tostring(Utils.HashGuidToNumber(token.charid)) == want) then
+                --bigger creatures get a bigger effect, like the token visual driver does.
+                local footprint = math.sqrt(math.max(1, #(token.locsOccupying or {})))
+                local group = ParticleEffects.Create(recipeid, { followToken = token.charid }, footprint)
+                if group ~= nil then
+                    dmhub.Schedule(seconds, function()
+                        group:Stop()
+                    end)
+                end
+            end
+        end
+    end,
+}
+
 Commands.RegisterMacro{
     name = "broadcast",
     summary = "broadcast a command",

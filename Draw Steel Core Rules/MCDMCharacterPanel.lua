@@ -9252,7 +9252,18 @@ function TacPanel.ConditionTooltipText(condid, cond, creature)
         for _, riderid in ipairs(riderids) do
             local riderInfo = ridersTable[riderid]
             if riderInfo ~= nil then
-                ridersText = string.format("%s\n\n<b>%s</b>: %s", ridersText, riderInfo.name, riderInfo.description)
+                local riderDescription = riderInfo.description
+                --Rider text may say "[Caster's Name]"; show whoever inflicted the condition.
+                if string.find(riderDescription, "[Caster's Name]", 1, true) then
+                    local casterName = "the caster"
+                    local casterInfo = cond.casterInfo
+                    local casterToken = casterInfo ~= nil and casterInfo.tokenid ~= nil and dmhub.GetTokenById(casterInfo.tokenid) or nil
+                    if casterToken ~= nil and casterToken.valid then
+                        casterName = creature.GetTokenDescription(casterToken)
+                    end
+                    riderDescription = string.gsub(riderDescription, "%[Caster's Name%]", function() return casterName end)
+                end
+                ridersText = string.format("%s\n\n<b>%s</b>: %s", ridersText, riderInfo.name, riderDescription)
             end
         end
     end

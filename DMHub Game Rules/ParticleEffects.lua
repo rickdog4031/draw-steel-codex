@@ -324,3 +324,21 @@ ParticleEffects.Register{
         },
     },
 }
+
+--A burst of fire in about a one-square radius around a token, tuned from the "Fire Particles"
+--map object (same flame image, colours, rise and growth). Meant to be played for a few seconds
+--through the tokenfx command, e.g. Pillar of Holy Fire burning its dazed target.
+ParticleEffects.Register{
+    id = "pillar-of-holy-fire",
+    name = "Pillar of Holy Fire",
+    layers = {
+        {
+            image = IMAGE_FIRE, type = "Additive", tokenRadius = 0.6, sortLayer = "EffectsAboveTokens",
+            rate = 12, lifetime = 1, speed = 0, verticalSpeed = 1,
+            opacity = 1, fadein = 0.2, fadeout = 0.37,
+            birthColor = { r = 1, g = 0.48, b = 0.12, a = 1 }, deathColor = { r = 1, g = 0.79, b = 0.25, a = 1 },
+            birthSize = 0.85, deathSize = 2,
+            worldSpace = true, maxParticles = 600,
+        },
+    },
+}
