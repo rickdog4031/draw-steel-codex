@@ -575,7 +575,16 @@ CharacterModifier.TypeInfo.attribute = {
 		
 		local op = self:try_get("operation", "add")
 
-		return attributeType:ApplyOperation(currentValue, mod, op)
+		local result = attributeType:ApplyOperation(currentValue, mod, op)
+
+		--Optional "to a maximum of N" rule on an 'add' (e.g. +1 to one characteristic, max 3).
+		--Never lowers a score that is already above the cap, it just refuses to raise it further.
+		local cap = self:try_get("cap")
+		if cap ~= nil and op == "add" and type(result) == "number" and type(currentValue) == "number" and result > cap then
+			result = math.max(currentValue, cap)
+		end
+
+		return result
 
 	end,
 
