@@ -1257,6 +1257,17 @@ function creature:FillCalculatedStatusIcons(result)
                 else
                     hoverText = string.format("<b>%s</b>: %s%s", conditionInfo.name, sourceDescription, conditionInfo.description)
                 end
+
+                --Show each attached rider's rules too, matching the character panel tooltip.
+                if v.riders ~= nil then
+                    local ridersTable = GetTableCached(CharacterCondition.ridersTableName)
+                    for _,riderid in ipairs(v.riders) do
+                        local riderInfo = ridersTable[riderid]
+                        if riderInfo ~= nil and riderInfo.description ~= "" then
+                            hoverText = string.format("%s\n\n<b>%s</b>: %s", hoverText, riderInfo.name, riderInfo.description)
+                        end
+                    end
+                end
                 result[#result+1] = {
                     id = k,
                     icon = conditionInfo.iconid,
