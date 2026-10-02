@@ -53,7 +53,7 @@ function ActivatedAbilityDamageBehavior:Cast(ability, casterToken, targets, opti
             amount = 0,
             damageType = self:EffectiveDamageType(ability, options),
             chatMessage = self.chatMessage,
-            casterid = casterToken.charid,
+            casterid = ActivatedAbility.GetLogActorId(casterToken, options),
             targetids = tokenids,
         }
     end

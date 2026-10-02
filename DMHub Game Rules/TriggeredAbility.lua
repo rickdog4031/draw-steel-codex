@@ -1919,6 +1919,22 @@ local function AckEventWaitFromSymbols(casterToken, symbols)
 	end
 end
 
+--Token id of whoever applied the ongoing effect or condition rider this trigger came
+--from, or nil for innate traits and auras. modContext is a creature:GetActiveModifiers() entry.
+function TriggeredAbility.GetEffectCasterId(modContext)
+	if modContext == nil then
+		return nil
+	end
+	local casterInfo = modContext.casterInfo
+	if casterInfo == nil and modContext.ongoingEffect ~= nil then
+		casterInfo = modContext.ongoingEffect:try_get("casterInfo")
+	end
+	if casterInfo ~= nil and type(casterInfo.tokenid) == "string" then
+		return casterInfo.tokenid
+	end
+	return nil
+end
+
 function TriggeredAbility:ExecuteTriggerCast(args)
 	local argOptions = args.argOptions or {}
 	if type(argOptions.aiActivityId) == "string" and type(argOptions.aiReactionId) == "string"
@@ -1928,6 +1944,15 @@ function TriggeredAbility:ExecuteTriggerCast(args)
 	local casterToken = args.casterToken
 	local symbols = args.symbols
 	local targets = args.targets
+
+	--If someone else put this trigger on the creature (ongoing effect or condition
+	--rider), record them so action log cards credit them. See ActivatedAbility.GetLogActorId.
+	if type(symbols) == "table" then
+		local effectCaster = TriggeredAbility.GetEffectCasterId(args.modContext)
+		if effectCaster ~= nil and effectCaster ~= casterToken.charid then
+			symbols.logsourceid = effectCaster
+		end
+	end
 
 	local isDismissExec = args.dismiss == true
 	argOptions.dismiss = isDismissExec

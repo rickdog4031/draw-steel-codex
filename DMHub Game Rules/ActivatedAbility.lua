@@ -3641,6 +3641,20 @@ function ActivatedAbility:ShowChatMessageOnCast()
     return self.countsAsCast and self.categorization ~= "Hidden"
 end
 
+--Token id an action log card should credit as the actor: normally the caster, but a
+--trigger that sits on a victim because someone else applied it (Thorn Cage damage,
+--Pillar of Holy Fire) carries that applier in symbols.logsourceid.
+function ActivatedAbility.GetLogActorId(casterToken, options)
+	local symbols = options ~= nil and options.symbols or nil
+	if type(symbols) == "table" then
+		local sourceid = rawget(symbols, "logsourceid")
+		if sourceid ~= nil and dmhub.GetCharacterById(sourceid) ~= nil then
+			return sourceid
+		end
+	end
+	return casterToken.charid
+end
+
 function ActivatedAbility.GetTokenIds(targets)
 	local tokenids = {}
 	for i,target in ipairs(targets) do

@@ -5769,6 +5769,8 @@ function creature:FillTemporalActiveModifiers(result)
                                 mod = mod,
                                 --Carried so the roll dialog can name the inflicting ability.
                                 sourceDescription = v.sourceDescription,
+                                --Who inflicted the condition; action log cards credit them.
+                                casterInfo = v.casterInfo,
                             }
                         end
                     end

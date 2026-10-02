@@ -265,7 +265,7 @@ function ActivatedAbilityPurgeEffectsBehavior:Cast(ability, casterToken, targets
                     else
                         local msg = ActivatedAbilityPurgeEffectsChatMessage.new{
                             ability = ability,
-                            casterid = casterToken.charid,
+                            casterid = ActivatedAbility.GetLogActorId(casterToken, options),
                             chatMessage = self.chatMessage,
                             conditions = self.conditions,
                             targetids = { target.token.charid },
@@ -346,7 +346,7 @@ function ActivatedAbilityPurgeEffectsBehavior:Cast(ability, casterToken, targets
                         else
                             messages[#messages+1] = ActivatedAbilityPurgeEffectsChatMessage.new{
                                 ability = ability,
-                                casterid = casterToken.charid,
+                                casterid = ActivatedAbility.GetLogActorId(casterToken, options),
                                 chatMessage = self.chatMessage,
                                 conditions = self.conditions,
                                 targetids = { data.token.charid },
@@ -496,7 +496,7 @@ function ActivatedAbilityPurgeEffectsBehavior:Cast(ability, casterToken, targets
                     else
                         messages[#messages+1] = ActivatedAbilityPurgeEffectsChatMessage.new{
                             ability = ability,
-                            casterid = casterToken.charid,
+                            casterid = ActivatedAbility.GetLogActorId(casterToken, options),
                             chatMessage = self.chatMessage,
                             conditions = self.conditions,
                             targetids = { data.token.charid },
