@@ -331,6 +331,62 @@ GameSystem.RegisterApplyToTargets{
 	end,
 }
 
+--Apply the behavior to the creature that has the caster grabbed (whoever applied the
+--Grabbed condition to them). Lets Escape Grab hand the free strike straight to the grabber
+--instead of asking the escaping player to nominate one. Empty if the caster isn't grabbed.
+GameSystem.RegisterApplyToTargets{
+	id = "caster_grabber",
+	text = "Creature Grabbing the Caster",
+	resolve = function(ability, casterToken, targets, options)
+		local result = {}
+		if casterToken == nil or (not casterToken.valid) or casterToken.properties == nil then
+			return result
+		end
+
+		--Same lookup as the ConditionCaster("Grabbed") GoblinScript function, but we
+		--want the token rather than a symbol table.
+		local conditionsTable = GetTableCached(CharacterCondition.tableName)
+		local effectsTable = GetTableCached("characterOngoingEffects")
+		local props = casterToken.properties
+		local grabberId = nil
+		local seqFound = -1
+
+		for _,effectInfo in ipairs(props:ActiveOngoingEffects()) do
+			local info = effectInfo:try_get("casterInfo")
+			if effectInfo.seq > seqFound and info ~= nil then
+				local effect = effectsTable[effectInfo.ongoingEffectid]
+				local cond = effect ~= nil and conditionsTable[effect.condition] or nil
+				if (cond ~= nil and string.lower(cond.name) == "grabbed") or (effect ~= nil and string.lower(effect.name) == "grabbed") then
+					seqFound = effectInfo.seq
+					grabberId = info.tokenid
+				end
+			end
+		end
+
+		if grabberId == nil then
+			for key,entry in pairs(props:try_get("inflictedConditions") or {}) do
+				local cond = conditionsTable[key]
+				if cond ~= nil and string.lower(cond.name) == "grabbed" and entry.casterInfo ~= nil then
+					grabberId = entry.casterInfo.tokenid
+				end
+			end
+		end
+
+		--Grabbed may already have been purged this cast (a successful escape); fall back to
+		--the grabber remembered earlier in the cast.
+		if grabberId == nil and options ~= nil and options.symbols ~= nil and options.symbols.cast ~= nil then
+			grabberId = options.symbols.cast:try_get("_tmp_grabberId")
+		end
+
+		local grabberToken = grabberId ~= nil and dmhub.GetTokenById(grabberId) or nil
+		if grabberToken ~= nil and grabberToken.valid then
+			result[#result+1] = { token = grabberToken }
+		end
+
+		return result
+	end,
+}
+
 --The trigger subject, like "Trigger Subject". But if the subject is a minion
 --whose token is already gone (its death confirmed and the token removed), it
 --resolves to a living member of the same squad instead. Minions share one
